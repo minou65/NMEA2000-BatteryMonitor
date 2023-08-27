@@ -192,21 +192,6 @@ void handleRoot() {
     return;
     }
 
-    String Type = "";
-    switch (gBatteryType) {
-    case N2kDCbt_Flooded:
-        Type = "flooded lead acid";
-        break;
-    case N2kDCbt_Gel: 
-        Type = "GEL";
-        break;
-    case N2kDCbt_AGM:
-        Type = "AGM";
-        break;
-    default:
-        Type = "unknown";
-    }
-
     String page = HTML_Start_Doc;
     page.replace("{v}", iotWebConf.getThingName());
 
@@ -260,7 +245,7 @@ void handleRoot() {
     page.replace("{l}", "Battery configuration");
   
         page += "<table border=0 align=center width=100%>";
-        page += "<tr><td align=left>Type:</td><td>" + Type + "</td></tr>";
+        page += "<tr><td align=left>Type:</td><td>" + String(BatteryTypeNames[gBatteryType]) + "</td></tr>";
         page += "<tr><td align=left>Capacity:</td><td>" + String(gCapacityAh) + "Ah</td></tr>";
         page += "<tr><td align=left>Efficiency:</td><td>" + String(gChargeEfficiencyPercent) + "%</td></tr>";
         page += "<tr><td align=left>Min soc:</td><td>" + String(gMinPercent) + "%</td></tr>";
