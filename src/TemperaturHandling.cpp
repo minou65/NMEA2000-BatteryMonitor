@@ -1,7 +1,3 @@
-// 
-// 
-// 
-
 
 #include "TemperaturHandling.h"
 #include <OneWire.h>
@@ -10,6 +6,8 @@
 #include "common.h"
 #include "sensorHandling.h"
 #include "statusHandling.h"
+
+// #define DEBUG_Temperatur
 
 static const float TemperatureCalibrationFactor = 1;
 
@@ -33,11 +31,15 @@ void TemperaturLoop() {
     if (gParamsChanged) {
 
     }
+    sensors.requestTemperatures(); // Send the command to get temperatures
 
     if (now - lastUpdate >= UPDATE_INTERVAL) {
         gBattery.setTemperatur(sensors.getTempCByIndex(0) * TemperatureCalibrationFactor);
         lastUpdate = now;
     }
-    //Serial.print("Temperatur:   ");
-    //Serial.println(double(gBattery.temperatur()));
+
+#ifdef DEBUG_Temperatur
+    Serial.print("Temperatur:   ");
+    Serial.println(double(gBattery.temperatur()));
+#endif // DEBUG_Temperatur
 }
