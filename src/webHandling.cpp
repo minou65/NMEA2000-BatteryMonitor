@@ -84,7 +84,7 @@ char chargeEfficiencyValue[NUMBER_LEN];
 char minSocValue[NUMBER_LEN];
 char BatteryReplacmentDateValue[STRING_LEN];
 IotWebConfParameterGroup BatteryGroup = IotWebConfParameterGroup("Battery","Battery");
-IotWebConfNumberParameter BatteryInstance = IotWebConfNumberParameter("Instance", "BatteryInstance", BatteryInstanceValue, NUMBER_LEN, "100", "1..100", "min='1' max='100' step='1'");
+IotWebConfNumberParameter BatteryInstance = IotWebConfNumberParameter("Instance", "BatteryInstance", BatteryInstanceValue, NUMBER_LEN, "1", "1..100", "min='1' max='100' step='1'");
 IotWebConfSelectParameter BatteryType = IotWebConfSelectParameter("Type", "BatteryType", BatteryTypeValue, STRING_LEN, (char*)BatteryTypeValues, (char*)BatteryTypeNames, sizeof(BatteryTypeValues) / STRING_LEN, STRING_LEN);
 IotWebConfNumberParameter battCapacity = IotWebConfNumberParameter("Capacity [Ah]", "battAh", battCapacityValue, NUMBER_LEN, "100", "1..300", "min='1' max='300' step='1'");
 IotWebConfNumberParameter chargeEfficiency = IotWebConfNumberParameter("charge efficiency [%]", "cheff", chargeEfficiencyValue, NUMBER_LEN, "95", "1..100", "min='1' max='100' step='1'");
