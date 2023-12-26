@@ -25,22 +25,15 @@
 #error "Unknown Device"
 #endif
 
+// #efine DEBUG_SENSOR_Config
+//#define DEBUG_SENSOR
 
 float gVoltageCalibrationFactor = 1.0;
 float gCurrentCalibrationFactor = 1.0;
 
-struct Shunt {
-  float resistance;
-  float maxCurrent;
-};
-
-
 volatile uint16_t alertCounter = 0;
 double sampleTime = 0;
 bool gSensorInitialized=false;
-
-Shunt PZEM017ShuntData[4] = {
-    {0.00075, 100}, {0.0015, 50}, {0.000375, 200}, {0.000250, 300}};
 
 static INA226 ina(Wire);
 
@@ -114,7 +107,7 @@ uint16_t translateSampleCount(ina226_averages_t value) {
   return result;
 }
 
-#ifdef DEBUG_SENSOR
+#ifdef DEBUG_SENSOR_Config
 void checkConfig() {
     Serial.print("Mode:                  ");
     switch (ina.getMode()) {
@@ -255,16 +248,6 @@ void checkConfig() {
 }
 #endif
 
-void sensorSetShunt(uint16_t id) {
-    if(id < sizeof(PZEM017ShuntData)/ sizeof(Shunt)) {
-        gShuntResistancemR = PZEM017ShuntData[id].resistance * 1000.0f;
-        gMaxCurrentA = PZEM017ShuntData[id].maxCurrent;
-
-        ina.calibrate(PZEM017ShuntData[id].resistance,PZEM017ShuntData[id].maxCurrent);
-    }
-    
-}
-
 void setupSensor() {
     // Default INA226 address is 0x40
     gSensorInitialized = ina.begin();
@@ -277,7 +260,16 @@ void setupSensor() {
     // Configure INA226
     ina.configure(INA226_AVERAGES_64, INA226_BUS_CONV_TIME_2116US,
                     INA226_SHUNT_CONV_TIME_2116US, INA226_MODE_SHUNT_BUS_CONT);
-    ina.calibrate(gShuntResistancemR / 1000, gMaxCurrentA);    
+#ifdef DEBUG_SENSOR
+    Serial.print("gShuntResistancemR: ");
+    Serial.println(gShuntResistancemR, 3);
+    Serial.print("gMaxCurrentA: ");
+    Serial.println(gMaxCurrentA);
+    Serial.println("================================");
+
+#endif // DEBUG_SENSOR
+
+    ina.calibrate(gShuntResistancemR / 1000, gMaxCurrentA);
     ina.enableConversionReadyAlert();
 
     uint16_t conversionTimeShunt =
@@ -296,12 +288,12 @@ void sensorInit() {
 
     setupSensor();
 
-#ifdef DEBUG_SENSOR
+#ifdef DEBUG_SENSOR_Config
     // Display configuration
     checkConfig();
 #endif
 
-    gBattery.setParameters(gCapacityAh,gChargeEfficiencyPercent,gMinPercent,gTailCurrentmA,gFullVoltagemV,gFullDelayS);
+    gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 }
 
 void updateAhCounter() {
@@ -313,10 +305,14 @@ void updateAhCounter() {
     alertCounter = 0;
     interrupts();
 
-    //float shuntVoltage = ina.readShuntVoltage();
+    // float shuntVoltage = ina.readShuntVoltage();
     float current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
-    //Serial.printf("current is: %.2f\n",current);
-    gBattery.updateConsumption(current,sampleTime,count);
+    if (current < gCurrentThreshold) {
+        current = 0.0;
+    }
+
+    Serial.printf("current is: %.2f\n",current);
+    gBattery.updateConsumption(current, sampleTime, count);
     if(count > 1) {
         Serial.printf("Overflow %d\n",count);
     } 
@@ -332,13 +328,22 @@ void sensorLoop() {
 
     if(gParamsChanged) {
         ina.calibrate(gShuntResistancemR / 1000.0, gMaxCurrentA);    
-        gBattery.setParameters(gCapacityAh,gChargeEfficiencyPercent,gMinPercent,gTailCurrentmA,gFullVoltagemV,gFullDelayS);
+        gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
     }
 
-    while (alertCounter && ina.isConversionReady()) {           
+    while (alertCounter && ina.isConversionReady()) { 
+
+#ifdef DEBUG_SENSOR
+
+        Serial.println(F("Update Ah counter"));
+#endif // DEBUG_SENSOR_Config
+
         updateAhCounter();
         gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
     }
+
+    // gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
+
     
     if (now - lastUpdate >= UPDATE_INTERVAL) {
         gBattery.checkFull();        
@@ -347,8 +352,9 @@ void sensorLoop() {
         gBattery.updateStats(now);
         lastUpdate = now;
     }
-/*
-     Serial.print("Bus voltage:   ") ;
+
+#ifdef DEBUG_SENSOR
+    Serial.print("Bus voltage:   ") ;
     Serial.print(ina.readBusVoltage(), 7);
     Serial.println(" V");
 
@@ -365,5 +371,5 @@ void sensorLoop() {
     Serial.println(" A");
 
     Serial.println("");
-*/    
+#endif // DEBUG_SENSOR
 }
