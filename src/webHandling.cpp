@@ -46,6 +46,7 @@ uint16_t gMinPercent;
 uint16_t gTailCurrentmA;
 uint16_t gFullVoltagemV;
 uint16_t gFullDelayS;
+float gCurrentThreshold;
 float gShuntResistancemR;
 uint16_t gMaxCurrentA;
 char gCustomName[64] = "NMEA-Batterymonitor";
@@ -76,11 +77,13 @@ static char BatteryTypeNames[][STRING_LEN] = {
     "AGM"
 };
 
+char BatteryInstanceValue[NUMBER_LEN];
 char BatteryTypeValue[STRING_LEN];
 char battCapacityValue[NUMBER_LEN];
 char chargeEfficiencyValue[NUMBER_LEN];
 char minSocValue[NUMBER_LEN];
 IotWebConfParameterGroup BatteryGroup = IotWebConfParameterGroup("Battery","Battery");
+IotWebConfNumberParameter BatteryInstance = IotWebConfNumberParameter("Instance", "BatteryInstance", BatteryInstanceValue, NUMBER_LEN, "100", "1..100", "min='1' max='100' step='1'");
 IotWebConfSelectParameter BatteryType = IotWebConfSelectParameter("Type", "BatteryType", BatteryTypeValue, STRING_LEN, (char*)BatteryTypeValues, (char*)BatteryTypeNames, sizeof(BatteryTypeValues) / STRING_LEN, STRING_LEN);
 IotWebConfNumberParameter battCapacity = IotWebConfNumberParameter("Capacity [Ah]", "battAh", battCapacityValue, NUMBER_LEN, "100", "1..300", "min='1' max='300' step='1'");
 IotWebConfNumberParameter chargeEfficiency = IotWebConfNumberParameter("charge efficiency [%]", "cheff", chargeEfficiencyValue, NUMBER_LEN, "95", "1..100", "min='1' max='100' step='1'");
@@ -89,10 +92,13 @@ IotWebConfNumberParameter minSoc = IotWebConfNumberParameter("Minimun SOC [%]", 
 char tailCurrentValue[NUMBER_LEN];
 char fullVoltageValue[NUMBER_LEN];
 char fullDelayValue[NUMBER_LEN];
+char CurrentThresholdValue[NUMBER_LEN];
 IotWebConfParameterGroup fullGroup = IotWebConfParameterGroup("FullD","Battery full detection");
 IotWebConfNumberParameter tailCurrent = IotWebConfNumberParameter("Tail current [A]", "tailC", tailCurrentValue, NUMBER_LEN, "1.500", "0..100", "min='0.001' max='100' step='0.001'");
 IotWebConfNumberParameter fullVoltage = IotWebConfNumberParameter("Voltage when full [V]", "fullV", fullVoltageValue, NUMBER_LEN, "12.85", "0..38", "min='0.01' max='38' step='0.01'");
 IotWebConfNumberParameter fullDelay = IotWebConfNumberParameter("Delay before full [s]", "fullDelay", fullDelayValue, NUMBER_LEN, "60", "1..7200", "min='1' max='7200' step='1'");
+IotWebConfNumberParameter CurrentThreshold = IotWebConfNumberParameter("Current threshold [A]", "CurrentThreshold", CurrentThresholdValue, NUMBER_LEN, "0.10", "0.00..2.00", "min='0.00' max='2.00' step='0.01'");
+
 
 void wifiStoreConfig() {
     iotWebConf.saveConfig();
@@ -142,6 +148,7 @@ void wifiSetup() {
     ShuntGroup.addItem(&VoltageCalibrationFactor);
     ShuntGroup.addItem(&CurrentCalibrationFactor);
 
+    BatteryGroup.addItem(&BatteryInstance);
     BatteryGroup.addItem(&BatteryType);
     BatteryGroup.addItem(&battCapacity);
     BatteryGroup.addItem(&chargeEfficiency);
@@ -150,6 +157,7 @@ void wifiSetup() {
     fullGroup.addItem(&fullVoltage);
     fullGroup.addItem(&tailCurrent);
     fullGroup.addItem(&fullDelay);
+    fullGroup.addItem(&CurrentThreshold);
      
     iotWebConf.setStatusPin(STATUS_PIN,ON_LEVEL);
     iotWebConf.setConfigPin(CONFIG_PIN);
@@ -220,7 +228,7 @@ void handleRoot() {
 
             page += "<tr><td align=left>Time to go:</td><td>" + String(tTgh) + "h" + "</td></tr>";;
             page += "<tr><td align=left>Battery full:</td><td>" + String(gBattery.isFull() ? "true" : "false") + "</td></tr>";
-            page += "<tr><td align=left>Temperature:</td><td>" + String(gBattery.temperatur()) +"°C" + "</td></tr>";
+            page += "<tr><td align=left>Temperature:</td><td>" + String(gBattery.temperatur()) +"&deg;C" + "</td></tr>";
         }
         else {
             page += "<tr><td><div><font color=red size=+1><b>Sensor failure!</b></font></div></td></tr>";
@@ -281,7 +289,7 @@ void handleRoot() {
 
 void convertParams() {
     gShuntResistancemR = atof(shuntResistanceValue);
-    gMaxCurrentA = atoi(maxCurrentValue);
+    gMaxCurrentA =atoi(maxCurrentValue); 
     gCapacityAh = atoi(battCapacityValue);
     gChargeEfficiencyPercent = atoi(chargeEfficiencyValue);
     gMinPercent = atoi(minSocValue);
@@ -296,6 +304,9 @@ void convertParams() {
     gBatteryType = tN2kBatType(atoi(BatteryTypeValue));
     gVoltageCalibrationFactor = atof(VoltageCalibrationFactorValue);
     gCurrentCalibrationFactor = atof(CurrentCalibrationFactorValue);
+    gCurrentThreshold = atof(CurrentThresholdValue);
+
+    gBatteryInstance = atoi(BatteryInstanceValue);
 
 }
 

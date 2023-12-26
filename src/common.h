@@ -22,10 +22,13 @@ extern tN2kBatType gBatteryType;
 
 extern float gVoltageCalibrationFactor;
 extern float gCurrentCalibrationFactor;
+extern float gCurrentThreshold;
 
 extern char gCustomName[64];
 extern char Version[];
 
-#define UPDATE_INTERVAL 990
+extern char gBatteryInstance;
+
+#define UPDATE_INTERVAL 1000
 
 

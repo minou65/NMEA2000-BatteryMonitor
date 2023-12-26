@@ -13,10 +13,12 @@
 #include "statusHandling.h"
 
 // Set time offsets
-#define SlowDataUpdatePeriod 1000  // Time between CAN Messages sent
+#define SlowDataUpdatePeriod 5000  // Time between CAN Messages sent
 #define TempSendOffset 0
 
 uint8_t gN2KSource = 22;
+char gBatteryInstance = '1';
+char gBatterySID = '1';
 
 
 // List here messages your device will transmit.
@@ -102,13 +104,13 @@ void SendN2kBattery(void) {
         if (gBattery.tTg() != INFINITY) {
             BatteryTimeToGo = roundf(gBattery.tTg() / 60);
         }
-        SetN2kDCBatStatus(N2kMsg, 1, BatteryVoltage, BatteryCurrent, BatteryTemperature, 1);
+        SetN2kDCBatStatus(N2kMsg, gBatteryInstance, BatteryVoltage, BatteryCurrent, BatteryTemperature, gBatterySID);
         NMEA2000.SendMsg(N2kMsg);
 
-        SetN2kDCStatus(N2kMsg, 1, 1, N2kDCt_Battery, BatterySOC, BatteryTimeToGo, N2kDoubleNA, N2kDoubleNA);
+        SetN2kDCStatus(N2kMsg, gBatterySID, gBatteryInstance, N2kDCt_Battery, BatterySOC, BatteryTimeToGo, N2kDoubleNA, N2kDoubleNA);
         NMEA2000.SendMsg(N2kMsg);
 
-        SetN2kBatConf(N2kMsg, 1, N2kDCbt_Gel, N2kDCES_Yes, N2kDCbnv_12v, N2kDCbc_LeadAcid, AhToCoulomb(gCapacityAh), BatTemperatureCoefficient, PeukertExponent, gChargeEfficiencyPercent);
+        SetN2kBatConf(N2kMsg, gBatteryInstance, N2kDCbt_Gel, N2kDCES_Yes, N2kDCbnv_12v, N2kDCbc_LeadAcid, AhToCoulomb(gCapacityAh), BatTemperatureCoefficient, PeukertExponent, gChargeEfficiencyPercent);
         NMEA2000.SendMsg(N2kMsg);
     }
 
