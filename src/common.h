@@ -5,6 +5,8 @@
 
 #define STRING_LEN 40
 #define NUMBER_LEN 32
+#define DATE_LEN 11
+#define TIME_LEN 6
 
 extern bool gParamsChanged;
 
