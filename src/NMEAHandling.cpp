@@ -12,21 +12,26 @@
 #include "common.h"
 #include "statusHandling.h"
 
-// Set time offsets
-#define SlowDataUpdatePeriod 5000  // Time between CAN Messages sent
-#define TempSendOffset 0
-
 uint8_t gN2KSource = 22;
-char gBatteryInstance = '1';
-char gBatterySID = '1';
+uint8_t gN2KInstance = 1;
+uint8_t gN2KSID = 1;
 
+tN2kSyncScheduler DCBatStatusScheduler(false, 1500, 500);
+tN2kSyncScheduler DCStatusScheduler(false, 1500, 510);
+tN2kSyncScheduler BatConfScheduler(false, 5000, 520); // Non periodic
 
 // List here messages your device will transmit.
 const unsigned long TransmitMessages[] = { 127506L,127508L,127513L,0 };
 
-
 int8_t BatTemperatureCoefficient = 53;
 double PeukertExponent = 1.251;
+
+void OnN2kOpen() {
+    // Start schedulers now.
+    DCBatStatusScheduler.UpdateNextTime();
+    DCStatusScheduler.UpdateNextTime();
+    BatConfScheduler.UpdateNextTime();
+}
 
 void N2kInit() {
     uint8_t chipid[6];
@@ -65,52 +70,44 @@ void N2kInit() {
     // Here we tell library, which PGNs we transmit
     NMEA2000.ExtendTransmitMessages(TransmitMessages);
 
-
+    NMEA2000.SetOnOpen(OnN2kOpen);
     NMEA2000.Open();
 }
 
-bool IsTimeToUpdate(unsigned long NextUpdate) {
-    return (NextUpdate < millis());
-}
-
-unsigned long InitNextUpdate(unsigned long Period, unsigned long Offset = 0) {
-    return millis() + Period + Offset;
-}
-
-void SetNextUpdate(unsigned long& NextUpdate, unsigned long Period) {
-    while (NextUpdate < millis()) NextUpdate += Period;
-}
-
 void SendN2kBattery(void) {
-    static unsigned long SlowDataUpdated = InitNextUpdate(SlowDataUpdatePeriod, TempSendOffset);
     tN2kMsg N2kMsg;
 
+    const Statistics& stats = gBattery.statistics();
 
-    if (IsTimeToUpdate(SlowDataUpdated)) {
-        SetNextUpdate(SlowDataUpdated, SlowDataUpdatePeriod);
+    double BatteryTimeToGo = -1;
+    double BatteryCurrent = gBattery.current();
+    double BatteryVoltage = gBattery.voltage();
+    double BatteryAvgConsumption = gBattery.averageCurrent();
+    double BatteryPower = roundf(gBattery.current() * gBattery.voltage());
+    double BatteryTemperature = gBattery.temperatur();
+    double BatteryConsumedAs = roundf(stats.consumedAs / 3.6);
+    double BatterySOC = gBattery.soc();
+    byte BatterIsFull = gBattery.isFull();
 
-        const Statistics& stats = gBattery.statistics();
+    if (gBattery.tTg() != INFINITY) {
+        BatteryTimeToGo = roundf(gBattery.tTg() / 60);
+    }
 
-        double BatteryTimeToGo = -1;
-        double BatteryCurrent = gBattery.current();
-        double BatteryVoltage = gBattery.voltage();
-        double BatteryAvgConsumption = gBattery.averageCurrent();
-        double BatteryPower = roundf(gBattery.current() * gBattery.voltage());
-        double BatteryTemperature = gBattery.temperatur();
-        double BatteryConsumedAs = roundf(stats.consumedAs / 3.6);
-        double BatterySOC = gBattery.soc();
-        byte BatterIsFull = gBattery.isFull();
-
-        if (gBattery.tTg() != INFINITY) {
-            BatteryTimeToGo = roundf(gBattery.tTg() / 60);
-        }
-        SetN2kDCBatStatus(N2kMsg, gBatteryInstance, BatteryVoltage, BatteryCurrent, BatteryTemperature, gBatterySID);
+    if (DCBatStatusScheduler.IsTime()) {
+        DCBatStatusScheduler.UpdateNextTime();
+        SetN2kDCBatStatus(N2kMsg, gN2KInstance, BatteryVoltage, BatteryCurrent, BatteryTemperature, gN2KSID);
         NMEA2000.SendMsg(N2kMsg);
+    }
 
-        SetN2kDCStatus(N2kMsg, gBatterySID, gBatteryInstance, N2kDCt_Battery, BatterySOC, BatteryTimeToGo, N2kDoubleNA, N2kDoubleNA);
+    if (DCStatusScheduler.IsTime()) {
+        DCStatusScheduler.UpdateNextTime();
+        SetN2kDCStatus(N2kMsg, gN2KSID, gN2KInstance, N2kDCt_Battery, BatterySOC, BatteryTimeToGo, N2kDoubleNA, N2kDoubleNA);
         NMEA2000.SendMsg(N2kMsg);
+    }
 
-        SetN2kBatConf(N2kMsg, gBatteryInstance, N2kDCbt_Gel, N2kDCES_Yes, N2kDCbnv_12v, N2kDCbc_LeadAcid, AhToCoulomb(gCapacityAh), BatTemperatureCoefficient, PeukertExponent, gChargeEfficiencyPercent);
+    if (BatConfScheduler.IsTime()) {
+        BatConfScheduler.UpdateNextTime();
+        SetN2kBatConf(N2kMsg, gN2KInstance, gBatteryType, N2kDCES_Yes, gBatteryVoltage, gBatteryChemistry, AhToCoulomb(gCapacityAh), BatTemperatureCoefficient, PeukertExponent, gChargeEfficiencyPercent);
         NMEA2000.SendMsg(N2kMsg);
     }
 
