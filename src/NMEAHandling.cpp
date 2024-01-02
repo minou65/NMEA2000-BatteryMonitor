@@ -130,6 +130,8 @@ void N2Kloop() {
     SendN2kBattery();
     NMEA2000.ParseMessages();
 
+    CheckN2kSourceAddressChange();
+
     // Dummy to empty input buffer to avoid board to stuck with e.g. NMEA Reader
     if (Serial.available()) {
         Serial.read();
