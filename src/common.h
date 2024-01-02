@@ -9,6 +9,7 @@
 #define TIME_LEN 6
 
 extern bool gParamsChanged;
+extern bool gSaveParams;
 
 extern uint16_t gCapacityAh;
 extern uint16_t gChargeEfficiencyPercent;
@@ -33,6 +34,7 @@ extern char Version[];
 
 extern uint8_t gN2KInstance;
 extern uint8_t gN2KSID;
+extern uint8_t gN2KSource;
 
 #define UPDATE_INTERVAL 1000
 

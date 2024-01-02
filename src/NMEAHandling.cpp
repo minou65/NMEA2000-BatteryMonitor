@@ -33,6 +33,18 @@ void OnN2kOpen() {
     BatConfScheduler.UpdateNextTime();
 }
 
+void CheckN2kSourceAddressChange() {
+    uint8_t SourceAddress = NMEA2000.GetN2kSource();
+
+    if (SourceAddress != gN2KSource) {
+#ifdef DEBUG_MSG
+        Serial.printf("Address Change: New Address=%d\n", SourceAddress);
+#endif // DEBUG_MSG
+        gN2KSource = SourceAddress;
+        gSaveParams = true;
+    }
+}
+
 void N2kInit() {
     uint8_t chipid[6];
     uint32_t id = 0;

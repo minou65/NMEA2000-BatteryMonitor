@@ -37,6 +37,7 @@ DNSServer dnsServer;
 WebServer server(80);
 
 bool gParamsChanged = true;
+bool gSaveParams = false;
 
 uint16_t gCapacityAh;
 uint16_t gChargeEfficiencyPercent;
@@ -58,9 +59,11 @@ IotWebConf iotWebConf(gCustomName, &dnsServer, &server, wifiInitialApPassword, C
 
 char InstanceValue[NUMBER_LEN];
 char SIDValue[NUMBER_LEN];
+char SourceValue[NUMBER_LEN];
 iotwebconf::ParameterGroup InstanceGroup = iotwebconf::ParameterGroup("InstanceGroup", "NMEA 2000 Settings");
 iotwebconf::NumberParameter InstanceParam = iotwebconf::NumberParameter("Instance", "InstanceParam", InstanceValue, NUMBER_LEN, "1", "1..255", "min='1' max='254' step='1'");
 iotwebconf::NumberParameter SIDParam = iotwebconf::NumberParameter("SID", "SIDParam", SIDValue, NUMBER_LEN, "255", "1..254", "min='1' max='255' step='1'");
+iotwebconf::NumberParameter SourceParam = iotwebconf::NumberParameter("N2KSource", "N2KSource", SourceValue, NUMBER_LEN, "22", nullptr, nullptr);
 
 char maxCurrentValue[NUMBER_LEN];
 char VoltageCalibrationFactorValue[NUMBER_LEN];
@@ -154,6 +157,7 @@ void wifiSetup() {
 
     InstanceGroup.addItem(&InstanceParam);
     InstanceGroup.addItem(&SIDParam);
+    iotWebConf.addHiddenParameter(&SourceParam);
     iotWebConf.addParameterGroup(&InstanceGroup);
 
     ShuntGroup.addItem(&shuntResistance);
@@ -207,6 +211,18 @@ void wifiLoop() {
   // -- doLoop should be called as frequently as possible.
   iotWebConf.doLoop();
   ArduinoOTA.handle();
+
+  if (gSaveParams) {
+      Serial.println(F("Parameters are changed,save them"));
+
+      String s;
+
+      s = (String)gN2KSource;
+      strncpy(SourceParam.valueBuffer, s.c_str(), NUMBER_LEN);
+
+      iotWebConf.saveConfig();
+      gSaveParams = false;
+  }
 }
 
 void handleRoot() {
@@ -327,7 +343,8 @@ void convertParams() {
     gCurrentThreshold = atof(CurrentThresholdValue);
 
     gN2KInstance = atoi(InstanceValue);
-
+    gN2KSID = atoi(SIDValue);
+    gN2KSource = atoi(SourceValue);
 }
 
 void configSaved(){ 
