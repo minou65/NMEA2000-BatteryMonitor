@@ -53,7 +53,7 @@
 const char wifiInitialApPassword[] = "123456789";
 
 // -- Configuration specific key. The value should be modified if config structure was changed.
-#define CONFIG_VERSION "B9"
+#define CONFIG_VERSION "C1"
 
 // -- When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
 //      password to buld an AP. (E.g. in case of lost password)
@@ -68,6 +68,13 @@ const char wifiInitialApPassword[] = "123456789";
 #else
 #define ON_LEVEL LOW
 #endif
+
+static char BatTypeValues[][STRING_LEN] = { "0", "1", "2" };
+static char BatTypeNames[][STRING_LEN] = { "flooded", "gel", "AGM" };
+static char BatNomVoltValues[][STRING_LEN] = { "0", "1", "2", "3", "4", "5", "6" };
+static char BatNomVoltNames[][STRING_LEN] = { "6V", "12V", "24V", "32V", "62V", "42V", "48V" };
+static char BatChemValues[][STRING_LEN] = { "0", "1", "2", "3" };
+static char BatChemNames[][STRING_LEN] = { "lead acid", "LiIon", "NiCad", "NiMh" };
 
 extern void wifiSetup();
 extern void wifiReconnect();
