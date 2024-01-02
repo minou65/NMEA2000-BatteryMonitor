@@ -49,9 +49,18 @@ float gShuntResistancemR;
 uint16_t gMaxCurrentA;
 char gCustomName[64] = "NMEA-Batterymonitor";
 tN2kBatType gBatteryType = N2kDCbt_AGM;
+tN2kBatNomVolt gBatteryVoltage = N2kDCbnv_12v;
+tN2kBatChem gBatteryChemistry = N2kDCbc_LeadAcid;
+
 
 // -- We can add a legend to the separator
 IotWebConf iotWebConf(gCustomName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
+
+char InstanceValue[NUMBER_LEN];
+char SIDValue[NUMBER_LEN];
+iotwebconf::ParameterGroup InstanceGroup = iotwebconf::ParameterGroup("InstanceGroup", "NMEA 2000 Settings");
+iotwebconf::NumberParameter InstanceParam = iotwebconf::NumberParameter("Instance", "InstanceParam", InstanceValue, NUMBER_LEN, "1", "1..255", "min='1' max='254' step='1'");
+iotwebconf::NumberParameter SIDParam = iotwebconf::NumberParameter("SID", "SIDParam", SIDValue, NUMBER_LEN, "255", "1..254", "min='1' max='255' step='1'");
 
 char maxCurrentValue[NUMBER_LEN];
 char VoltageCalibrationFactorValue[NUMBER_LEN];
@@ -64,19 +73,9 @@ iotwebconf::NumberParameter maxCurrent = iotwebconf::NumberParameter("Expected m
 iotwebconf::NumberParameter VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", "VoltageCalibrationFactor", VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
 iotwebconf::NumberParameter CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", "CurrentCalibrationFactor", CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
 
-static char BatteryTypeValues[][STRING_LEN] = {
-    "0",
-    "1",
-    "2"
-};
-static char BatteryTypeNames[][STRING_LEN] = {
-    "flooded lead acid",
-    "GEL",
-    "AGM"
-};
-
-char BatteryInstanceValue[NUMBER_LEN];
-char BatteryTypeValue[STRING_LEN];
+char BatTypeValue[STRING_LEN];
+char BatNomVoltValue[STRING_LEN];
+char BatChemValue[STRING_LEN];
 char battCapacityValue[NUMBER_LEN];
 char chargeEfficiencyValue[NUMBER_LEN];
 char minSocValue[NUMBER_LEN];
@@ -84,8 +83,12 @@ char BatteryReplacmentDateValue[DATE_LEN];
 char BatteryReplacmentTimeValue[TIME_LEN];
 char BatteryManufacturerValue[STRING_LEN];
 iotwebconf::ParameterGroup BatteryGroup = iotwebconf::ParameterGroup("Battery","Battery");
-iotwebconf::NumberParameter BatteryInstance = iotwebconf::NumberParameter("Instance", "BatteryInstance", BatteryInstanceValue, NUMBER_LEN, "1", "1..100", "min='1' max='100' step='1'");
-iotwebconf::SelectParameter BatteryType = iotwebconf::SelectParameter("Type", "BatteryType", BatteryTypeValue, STRING_LEN, (char*)BatteryTypeValues, (char*)BatteryTypeNames, sizeof(BatteryTypeValues) / STRING_LEN, STRING_LEN);
+iotwebconf::SelectParameter BatType        = iotwebconf::SelectParameter("Type", "BatType", BatTypeValue, STRING_LEN, (char*)BatTypeValues, (char*)BatTypeNames, sizeof(BatTypeValues) / STRING_LEN, STRING_LEN, "2");
+iotwebconf::SelectParameter BatNomVoltType = iotwebconf::SelectParameter("Voltage", "BatNomVoltType", BatNomVoltValue, STRING_LEN, (char*)BatNomVoltValues, (char*)BatNomVoltNames, sizeof(BatNomVoltValues) / STRING_LEN, STRING_LEN, "1");
+iotwebconf::SelectParameter BatChemType    = iotwebconf::SelectParameter("Chemistrie", "BatChemType", BatChemValue, STRING_LEN, (char*)BatChemValues, (char*)BatChemNames, sizeof(BatChemValues) / STRING_LEN, STRING_LEN, "0");
+
+
+
 iotwebconf::NumberParameter battCapacity = iotwebconf::NumberParameter("Capacity [Ah]", "battAh", battCapacityValue, NUMBER_LEN, "100", "1..300", "min='1' max='300' step='1'");
 iotwebconf::NumberParameter chargeEfficiency = iotwebconf::NumberParameter("charge efficiency [%]", "cheff", chargeEfficiencyValue, NUMBER_LEN, "95", "1..100", "min='1' max='100' step='1'");
 iotwebconf::NumberParameter minSoc = iotwebconf::NumberParameter("Minimun SOC [%]", "minsoc", minSocValue, NUMBER_LEN, "10", "1..100", "min='1' max='100' step='1'");
@@ -149,13 +152,18 @@ void handleSetRuntime() {
 
 void wifiSetup() {
 
+    InstanceGroup.addItem(&InstanceParam);
+    InstanceGroup.addItem(&SIDParam);
+    iotWebConf.addParameterGroup(&InstanceGroup);
+
     ShuntGroup.addItem(&shuntResistance);
     ShuntGroup.addItem(&maxCurrent);
     ShuntGroup.addItem(&VoltageCalibrationFactor);
     ShuntGroup.addItem(&CurrentCalibrationFactor);
 
-    BatteryGroup.addItem(&BatteryInstance);
-    BatteryGroup.addItem(&BatteryType);
+    BatteryGroup.addItem(&BatType);
+    BatteryGroup.addItem(&BatNomVoltType);
+    BatteryGroup.addItem(&BatChemType);
     BatteryGroup.addItem(&battCapacity);
     BatteryGroup.addItem(&chargeEfficiency);
     BatteryGroup.addItem(&minSoc);
@@ -262,7 +270,7 @@ void handleRoot() {
     page.replace("{l}", "Battery configuration");
   
         page += "<table border=0 align=center width=100%>";
-        page += "<tr><td align=left>Type:</td><td>" + String(BatteryTypeNames[gBatteryType]) + "</td></tr>";
+        page += "<tr><td align=left>Type:</td><td>" + String(BatTypeNames[gBatteryType]) + "</td></tr>";
         page += "<tr><td align=left>Capacity:</td><td>" + String(gCapacityAh) + "Ah</td></tr>";
         page += "<tr><td align=left>Efficiency:</td><td>" + String(gChargeEfficiencyPercent) + "%</td></tr>";
         page += "<tr><td align=left>Min soc:</td><td>" + String(gMinPercent) + "%</td></tr>";
@@ -310,12 +318,15 @@ void convertParams() {
     gFullVoltagemV = fVv;
 
     gFullDelayS = atoi(fullDelayValue);
-    gBatteryType = tN2kBatType(atoi(BatteryTypeValue));
+    gBatteryType = tN2kBatType(atoi(BatTypeValue));
+    gBatteryVoltage = tN2kBatNomVolt(atoi(BatNomVoltValue));
+    gBatteryChemistry = tN2kBatChem(atoi(BatChemValue));
+
     gVoltageCalibrationFactor = atof(VoltageCalibrationFactorValue);
     gCurrentCalibrationFactor = atof(CurrentCalibrationFactorValue);
     gCurrentThreshold = atof(CurrentThresholdValue);
 
-    gBatteryInstance = atoi(BatteryInstanceValue);
+    gN2KInstance = atoi(InstanceValue);
 
 }
 
