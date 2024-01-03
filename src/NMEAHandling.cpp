@@ -107,7 +107,7 @@ void SendN2kBattery(void) {
 
     if (DCBatStatusScheduler.IsTime()) {
         DCBatStatusScheduler.UpdateNextTime();
-        SetN2kDCBatStatus(N2kMsg, gN2KInstance, BatteryVoltage, BatteryCurrent, BatteryTemperature, gN2KSID);
+        SetN2kDCBatStatus(N2kMsg, gN2KInstance, BatteryVoltage, BatteryCurrent, CToKelvin(BatteryTemperature), gN2KSID);
         NMEA2000.SendMsg(N2kMsg);
     }
 
