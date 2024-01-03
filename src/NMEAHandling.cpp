@@ -91,7 +91,7 @@ void SendN2kBattery(void) {
 
     const Statistics& stats = gBattery.statistics();
 
-    double BatteryTimeToGo = -1;
+    double BatteryTimeToGo = gBattery.tTg();
     double BatteryCurrent = gBattery.current();
     double BatteryVoltage = gBattery.voltage();
     double BatteryAvgConsumption = gBattery.averageCurrent();
@@ -104,7 +104,7 @@ void SendN2kBattery(void) {
     if (gBattery.tTg() != INFINITY) {
         BatteryTimeToGo = roundf(gBattery.tTg() / 60);
     }
-
+    
     if (DCBatStatusScheduler.IsTime()) {
         DCBatStatusScheduler.UpdateNextTime();
         SetN2kDCBatStatus(N2kMsg, gN2KInstance, BatteryVoltage, BatteryCurrent, CToKelvin(BatteryTemperature), gN2KSID);
@@ -113,7 +113,8 @@ void SendN2kBattery(void) {
 
     if (DCStatusScheduler.IsTime()) {
         DCStatusScheduler.UpdateNextTime();
-        SetN2kDCStatus(N2kMsg, gN2KSID, gN2KInstance, N2kDCt_Battery, BatterySOC, BatteryTimeToGo, N2kDoubleNA, N2kDoubleNA);
+        SetN2kDCStatus(N2kMsg, gN2KSID, gN2KInstance, N2kDCt_Battery, static_cast<unsigned char>(BatterySOC * 100), 0, BatteryTimeToGo, BatteryVoltage, AhToCoulomb(gCapacityAh));
+
         NMEA2000.SendMsg(N2kMsg);
     }
 

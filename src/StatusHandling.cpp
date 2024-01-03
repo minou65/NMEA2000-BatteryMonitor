@@ -16,8 +16,7 @@ BatteryStatus::BatteryStatus() {
     }
 }
 
-void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiencyPercent, uint16_t minPercent, uint16_t tailCurrentmA, uint16_t fullVoltagemV,uint16_t fullDelayS) 
-{
+void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiencyPercent, uint16_t minPercent, uint16_t tailCurrentmA, uint16_t fullVoltagemV,uint16_t fullDelayS) {
 
         batteryCapacity = ((float)capacityAh) *60.0f * 60.0f; // We use it in As
         chargeEfficiency = ((float)chargeEfficiencyPercent) / 100.0f;
@@ -25,12 +24,13 @@ void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiency
         fullVoltage = fullVoltagemV / 1000.0f;
         minAs = minPercent * batteryCapacity / 100.0f;
         fullDelay = ((unsigned long)fullDelayS) *1000;    
-        //SERIAL_DBG.printf("Init values: Capacity %.3f, efficiency %.3f, fullDelay %ld, \n",batteryCapacity,chargeEfficiency,fullDelay);
+        Serial.printf("Init values: Capacity %.3f, efficiency %.3f, fullDelayS %ld, tailCurrent %.3f, \n",batteryCapacity,chargeEfficiency,fullDelay, tailCurrent);
 
 }
 
 void BatteryStatus::updateSOC() {
     stats.socVal = stats.remainAs / batteryCapacity;
+    // Serial.printf("updateSOC: soc %.3f, remianAs %.3f, batteryCapacity %.3f, \n", stats.socVal, stats.remainAs, batteryCapacity);
     if (fabs(lastSoc - stats.socVal) >= .005) {
         // Store value in RTC memory
         writeStatusToRTC();
@@ -45,6 +45,8 @@ void BatteryStatus::updateTtG() {
     }  else {
         stats.tTgVal = INFINITY;
     }
+
+    // Serial.printf("Ttg avgCurrent = %.3f, TtgVal = %.3f\n", avgCurrent, stats.tTgVal);
 }
 
 void BatteryStatus::updateConsumption(float current, float period, uint16_t numPeriods) {
@@ -197,7 +199,6 @@ void BatteryStatus::updateStats(unsigned long now) {
         stats.highestTemperatur = lastTemperature;
     }
 }
-
 
 #ifdef ESP32
 RTC_DATA_ATTR Statistics rtcStats;

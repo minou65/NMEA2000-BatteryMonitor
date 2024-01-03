@@ -105,7 +105,7 @@ char fullVoltageValue[NUMBER_LEN];
 char fullDelayValue[NUMBER_LEN];
 char CurrentThresholdValue[NUMBER_LEN];
 iotwebconf::ParameterGroup fullGroup = iotwebconf::ParameterGroup("FullD","Battery full detection");
-iotwebconf::NumberParameter tailCurrent = iotwebconf::NumberParameter("Tail current [A]", "tailC", tailCurrentValue, NUMBER_LEN, "1.500", "0..100", "min='0.001' max='100' step='0.001'");
+iotwebconf::NumberParameter tailCurrent = iotwebconf::NumberParameter("Tail current [A]", "tailC", tailCurrentValue, NUMBER_LEN, "1.500", "0..65", "min='0.001' max='65' step='0.001'");
 iotwebconf::NumberParameter fullVoltage = iotwebconf::NumberParameter("Voltage when full [V]", "fullV", fullVoltageValue, NUMBER_LEN, "12.85", "0..38", "min='0.01' max='38' step='0.01'");
 iotwebconf::NumberParameter fullDelay = iotwebconf::NumberParameter("Delay before full [s]", "fullDelay", fullDelayValue, NUMBER_LEN, "60", "1..7200", "min='1' max='7200' step='1'");
 iotwebconf::NumberParameter CurrentThreshold = iotwebconf::NumberParameter("Current threshold [A]", "CurrentThreshold", CurrentThresholdValue, NUMBER_LEN, "0.10", "0.00..2.00", "min='0.00' max='2.00' step='0.01'");
@@ -123,8 +123,8 @@ void onSetSoc() {
     String soc = server.arg("soc");
     soc.trim();
     if(!soc.isEmpty()) {
-        uint16_t socVal = soc.toInt();
-        gBattery.setBatterySoc(((float)socVal)/100.0);
+        float socVal = soc.toInt() / 100.00;
+        gBattery.setBatterySoc((float)socVal);
         //Serial.printf("Set soc to %.2f",gBattery.soc());
     }
 
@@ -254,12 +254,17 @@ void handleRoot() {
         if (gSensorInitialized) {
             page += "<tr><td align=left>Battery Voltage:</td><td>" + String(gBattery.voltage(), 2) + "V" + "</td></tr>";
             page += "<tr><td align=left>Shunt current:</td><td>" + String(gBattery.current(), 2) + "A" + "</td></tr>";
-            page += "<tr><td align=left>Avg consumption:</td><td>" + String(gBattery.averageCurrent(), 2) + "A" + "</td></tr>";
-            page += "<tr><td align=left>Battery soc:</td><td>" + String(gBattery.soc(), 2) + "</td></tr>";
+            page += "<tr><td align=left>Avg consumption:</td><td>" + String(gBattery.averageCurrent() * -1, 2) + "A" + "</td></tr>";
+            page += "<tr><td align=left>State of charge:</td><td>" + String(gBattery.soc() * 100, 2) + "%</td></tr>";
 
-            uint16_t tTgh = gBattery.tTg() / 3600;
+            if (gBattery.tTg() != INFINITY) {
+                uint16_t tTgh = gBattery.tTg() / 3600;
+                page += "<tr><td align=left>Time to go:</td><td>" + String(tTgh) + "h" + "</td></tr>";
+            }
+            else {
+                page += "<tr><td align=left>Time to go:</td><td> INFINITY </td></tr>";
+            }
 
-            page += "<tr><td align=left>Time to go:</td><td>" + String(tTgh) + "h" + "</td></tr>";;
             page += "<tr><td align=left>Battery full:</td><td>" + String(gBattery.isFull() ? "true" : "false") + "</td></tr>";
             page += "<tr><td align=left>Temperature:</td><td>" + String(gBattery.temperatur()) +"&deg;C" + "</td></tr>";
         }
@@ -289,14 +294,13 @@ void handleRoot() {
         page += "<tr><td align=left>Type:</td><td>" + String(BatTypeNames[gBatteryType]) + "</td></tr>";
         page += "<tr><td align=left>Capacity:</td><td>" + String(gCapacityAh) + "Ah</td></tr>";
         page += "<tr><td align=left>Efficiency:</td><td>" + String(gChargeEfficiencyPercent) + "%</td></tr>";
-        page += "<tr><td align=left>Min soc:</td><td>" + String(gMinPercent) + "%</td></tr>";
+        page += "<tr><td align=left>Min SOC:</td><td>" + String(gMinPercent) + "%</td></tr>";
 
         float TailCurrentA = gTailCurrentmA;
         float FullVoltageV = gFullVoltagemV;
         page += "<tr><td align=left>Tail current:</td><td>" + String((TailCurrentA / 1000), 3) + "A</td></tr>";
-        page += "<tr><td align=left>Batt full voltage:</td><td>" + String((FullVoltageV / 1000),2) + "V</td></tr>";
-
-        page += "<tr><td align=left>Batt full delay:</td><td>" + String(gFullDelayS) + "s</td></tr>";
+        page += "<tr><td align=left>Full voltage:</td><td>" + String((FullVoltageV / 1000),2) + "V</td></tr>";
+        page += "<tr><td align=left>Full delay:</td><td>" + String(gFullDelayS) + "s</td></tr>";
 
     page += HTML_End_Table;
 
@@ -327,10 +331,10 @@ void convertParams() {
     gChargeEfficiencyPercent = atoi(chargeEfficiencyValue);
     gMinPercent = atoi(minSocValue);
 
-    uint16_t tCv = atof(tailCurrentValue) * 1000;
+    uint16_t tCv = static_cast<uint16_t>(atof(tailCurrentValue) * 1000);
     gTailCurrentmA = tCv;
     
-    uint16_t fVv = atof(fullVoltageValue) * 1000;
+    uint16_t fVv = static_cast<uint16_t>(atof(fullVoltageValue) * 1000);
     gFullVoltagemV = fVv;
 
     gFullDelayS = atoi(fullDelayValue);

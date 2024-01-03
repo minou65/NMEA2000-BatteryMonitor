@@ -25,8 +25,8 @@
 #error "Unknown Device"
 #endif
 
-// #efine DEBUG_SENSOR_Config
-//#define DEBUG_SENSOR
+#define DEBUG_SENSOR_Config
+// #define DEBUG_SENSOR
 
 float gVoltageCalibrationFactor = 1.0;
 float gCurrentCalibrationFactor = 1.0;
@@ -258,24 +258,14 @@ void setupSensor() {
         
     }
     // Configure INA226
-    ina.configure(INA226_AVERAGES_64, INA226_BUS_CONV_TIME_2116US,
-                    INA226_SHUNT_CONV_TIME_2116US, INA226_MODE_SHUNT_BUS_CONT);
-#ifdef DEBUG_SENSOR
-    Serial.print("gShuntResistancemR: ");
-    Serial.println(gShuntResistancemR, 3);
-    Serial.print("gMaxCurrentA: ");
-    Serial.println(gMaxCurrentA);
-    Serial.println("================================");
+    ina.configure(INA226_AVERAGES_64, INA226_BUS_CONV_TIME_2116US, INA226_SHUNT_CONV_TIME_2116US, INA226_MODE_SHUNT_BUS_CONT);
 
-#endif // DEBUG_SENSOR
+    Serial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
+    ina.calibrate(gShuntResistancemR, gMaxCurrentA);
+    gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 
-    ina.calibrate(gShuntResistancemR / 1000, gMaxCurrentA);
-    ina.enableConversionReadyAlert();
-
-    uint16_t conversionTimeShunt =
-        translateConversionTime(ina.getShuntConversionTime());
-    uint16_t conversionTimeBus = translateConversionTime(
-        (ina226_shuntConvTime_t)ina.getBusConversionTime());
+    uint16_t conversionTimeShunt = translateConversionTime(ina.getShuntConversionTime());
+    uint16_t conversionTimeBus = translateConversionTime((ina226_shuntConvTime_t)ina.getBusConversionTime());
     uint16_t samples = translateSampleCount(ina.getAverages());
 
     // This is the time it takes to create a new measurement
@@ -293,7 +283,6 @@ void sensorInit() {
     checkConfig();
 #endif
 
-    gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 }
 
 void updateAhCounter() {
@@ -305,13 +294,14 @@ void updateAhCounter() {
     alertCounter = 0;
     interrupts();
 
-    // float shuntVoltage = ina.readShuntVoltage();
+    //float shuntVoltage = ina.readShuntVoltage();
     float current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
     if (current < gCurrentThreshold) {
         current = 0.0;
     }
 
-    Serial.printf("current is: %.2f\n",current);
+    //Serial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n",current, gCurrentCalibrationFactor);
+    //Serial.printf("sampletime is: %.2d; count is: %i\n", sampleTime, count);
     gBattery.updateConsumption(current, sampleTime, count);
     if(count > 1) {
         Serial.printf("Overflow %d\n",count);
@@ -327,7 +317,8 @@ void sensorLoop() {
     }
 
     if(gParamsChanged) {
-        ina.calibrate(gShuntResistancemR / 1000.0, gMaxCurrentA);    
+        Serial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
+        ina.calibrate(gShuntResistancemR, gMaxCurrentA);    
         gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
     }
 
