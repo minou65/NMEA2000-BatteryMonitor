@@ -330,12 +330,11 @@ void sensorLoop() {
 #endif // DEBUG_SENSOR_Config
 
         updateAhCounter();
-        gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
+       //  gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
     }
 
-    // gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
-
-    
+    gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
+        
     if (now - lastUpdate >= UPDATE_INTERVAL) {
         gBattery.checkFull();        
         gBattery.updateSOC();        
