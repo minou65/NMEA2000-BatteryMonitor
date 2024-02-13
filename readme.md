@@ -4,30 +4,38 @@
 - [NMEA Battery monitor](#nmea-battery-monitor)
 	- [Table of contents](#table-of-contents)
 	- [Description ](#description-)
+	- [NMEA 2000](#nmea-2000)
 	- [Librarys ](#librarys-)
-	- [Required hardware ](#required-hardware-)
-	- [Shunt settings ](#shunt-settings-)
-		- [Shunt resistance \[mΩ\] ](#shunt-resistance-mω-)
-		- [Expected max current \[A\] ](#expected-max-current-a-)
-		- [Voltage calibration factor ](#voltage-calibration-factor-)
-		- [Current calibration factor ](#current-calibration-factor-)
-	- [Battery settings ](#battery-settings-)
-		- [Type ](#type-)
-		- [Capacity ](#capacity-)
-		- [charge efficiency \[%\] ](#charge-efficiency--)
-		- [Minimun SOC \[%\] ](#minimun-soc--)
-	- [Battery full detection ](#battery-full-detection-)
-		- [Voltage when full \[V\] ](#voltage-when-full-v-)
-		- [Tail current \[A\] ](#tail-current-a-)
-		- [Delay before full \[s\] ](#delay-before-full-s-)
-		- [Current threshold](#current-threshold)
-	- [WiFi ](#wifi-)
-		- [Default Password ](#default-password-)
-		- [Default IP address ](#default-ip-address-)
-		- [OTA ](#ota-)
-		- [Configuration options ](#configuration-options-)
-		- [Blinking codes ](#blinking-codes-)
-		- [Reset ](#reset-)
+	- [Required hardware](#required-hardware)
+	- [Configuration](#configuration)
+			- [Instance](#instance)
+			- [SID](#sid)
+		- [Shunt settings](#shunt-settings)
+			- [Shunt resistance \[mΩ\]](#shunt-resistance-mω)
+			- [Expected max current \[A\]](#expected-max-current-a)
+			- [Voltage calibration factor](#voltage-calibration-factor)
+			- [Current calibration factor](#current-calibration-factor)
+		- [Battery](#battery)
+			- [Type](#type)
+			- [Voltage](#voltage)
+			- [Chemistrie](#chemistrie)
+			- [Capacity](#capacity)
+			- [charge efficiency \[%\]](#charge-efficiency-)
+			- [Minimun SOC \[%\]](#minimun-soc-)
+			- [Replacment date](#replacment-date)
+			- [Manufacturer](#manufacturer)
+		- [Battery full detection](#battery-full-detection)
+			- [Voltage when full \[V\]](#voltage-when-full-v)
+			- [Tail current \[A\]](#tail-current-a)
+			- [Delay before full \[s\]](#delay-before-full-s)
+			- [Current threshold](#current-threshold)
+	- [WiFi](#wifi)
+		- [Default](#default)
+		- [Default IP address](#default-ip-address)
+		- [OTA](#ota)
+		- [Configuration options](#configuration-options)
+	- [Blinking codes](#blinking-codes)
+	- [Reset](#reset)
 
 ## Description <a name="description"></a>
 
@@ -36,6 +44,7 @@ It sums up the charges that move through the shunt. With this information it tri
 
 All information is sent to a plotter via NMEA 200 protocol. They can also be consumed via Web UI.
 
+## NMEA 2000
 The following PGN's will be send
 - 127506
 - 127508
@@ -53,7 +62,7 @@ The Software has been created using Visual Studio with the addon Visual Micro. I
 - NMEA2000
 - NMEA200_ESP
 
-## Required hardware <a name="hardware"></a>
+## Required hardware
 
 For measuring the current you need an __INA226 breakout board__ as you can acquire from 
 - [Amazon](https://www.amazon.de/ALAMSCN-Bi-Directional-Voltage-Current-Monitoring/dp/B09Z66QSPB/ref=sr_1_4?keywords=ina226&qid=1674921078&sr=8-4)
@@ -78,29 +87,55 @@ The following [schema](/sch/NMEA_BatteryMonitor%201-2.pdf) show you, how to put 
 
 And the following Link is the [Cabling schema](/sch/NMEA_BatteryMonitor%202-2.pdf)
 
-## Shunt settings <a name="shutnsettings"></a>
+## Configuration
+#### Instance
+This should be unique at least on one device. May be best to have it unique over all devices sending this PGN. A total of 5 instances are occupied by the device. Starting with the number set here.
 
-### Shunt resistance [mΩ] <a name="shuntresitance"></a>
+#### SID
+Sequence identifier. In most cases you can use just 255 for SID. The sequence identifier field is used to tie different PGNs data together to same sampling or calculation time.
 
-### Expected max current [A] <a name="shuntmaxcurrent"></a>
+### Shunt settings
 
-### Voltage calibration factor <a name="shuntvoltagecal"></a>
+#### Shunt resistance [mΩ]
 
-### Current calibration factor <a name="shuntcurrentcal"></a>
+#### Expected max current [A]
 
-## Battery settings <a name="batterysettings"></a>
+#### Voltage calibration factor
 
-### Type <a name="batterytype"></a>
+#### Current calibration factor
 
-### Capacity <a name="batterycapacity"></a>
+### Battery
 
+#### Type
+one of the following
+- flooded
+- gel
+- AGM
+
+#### Voltage
+- 6V
+- 12V
+- 24V
+- 32V
+- 62V
+- 42V
+- 48V
+
+Please note that the sensor is built for a maximum voltage of 40V without any special measures!
+
+#### Chemistrie
+- lead acid
+- LiIon
+- NiCad
+- NiMh
+
+#### Capacity
 This parameter is used to tell the battery monitor how big the battery is. This setting should already have been done during the initial installation.
 
 The setting is the battery capacity in Amp-hours (Ah).
 
-### charge efficiency [%] <a name="batterychargeeff"></a>
-
-The “Charge Efficiency Factor” compensates for the capacity (Ah) losses during charging. A setting of 100% means that there are no losses.
+#### charge efficiency [%] 
+The "Charge Efficiency Factor" compensates for the capacity (Ah) losses during charging. A setting of 100% means that there are no losses.
 A charge efficiency of 95% means that 10Ah must be transferred to the battery to get 9.5Ah actually stored in the battery. The charge efficiency of a 
 battery depends on battery type, age and usage. The battery monitor takes this phenomenon into account with the charge efficiency factor.
 
@@ -110,17 +145,20 @@ gas (highly explosive!). The energy stored in the plates can be retrieved during
 Gassing can easily be observed in flooded batteries. Please note that the ‘oxygen only’ end of the charge phase of sealed (VRLA) gel 
 and AGM batteries also results in a reduced charge efficiency.
 
-### Minimun SOC [%] <a name="batterysoc"></a>
+#### Minimun SOC [%]
 
-## Battery full detection <a name="batteryfull"></a>
+#### Replacment date
 
-### Voltage when full [V] <a name="batteryfullvolt"></a>
+#### Manufacturer
 
+### Battery full detection
+
+#### Voltage when full [V]
 The battery voltage must be above this voltage level to consider the battery as fully charged. As soon as the battery monitor detects that the 
 voltage of the battery has reached this “charged voltage” parameter and the current has dropped below the “tail current” parameter for a certain 
 amount of time, the battery monitor will set the state of charge to 100%.
 
-### Tail current [A] <a name="batteryfullcurrent"></a>
+#### Tail current [A]
 The battery is considered as fully charged once the charge current has dropped to less than this “Tail current” parameter. 
 The “Tail current” parameter is expressed as a percentage of the battery capacity.
 
@@ -130,31 +168,25 @@ higher than this threshold.
 As soon as the battery monitor detects that the voltage of the battery has reached the set “Charged voltage” parameter and the current has 
 dropped below this “Tail current” parameter for a certain amount of time, the battery monitor will set the state of charge to 100%.
 
-### Delay before full [s] <a name="batteryfulltime"></a>
-
+#### Delay before full [s]
 This is the time the "Voltage when full [V]" parameter and the "Tail current [A]" parameter must be met in order to consider the battery fully charged.
 
-### Current threshold
-
+#### Current threshold
 When the current measured falls below the “Current threshold” parameter it will be considered zero. The “Current threshold” is used to cancel out very small currents that can negatively affect the long-term state of charge readout in noisy environments. For example, if the actual long-term current is 0.0A and, due to injected noise or small offsets, the battery monitor measures ­0.05A the battery monitor might, in the long term, incorrectly indicate that the battery is empty or will need to be recharged. When the current threshold in this example is set to 0.1A, the battery monitor calculates with 0.0A so that errors are eliminated.
 
 
-## WiFi <a name="wifi"></a>
-
-### Default Password <a name="wifipassword"></a>
-
+## WiFi
+### Default
 When not connected to an AP the default password is 123456789
 
-### Default IP address <a name="wifiipaddress"></a>
-
+### Default IP address
 When in AP mode, the default IP address is 192.168.4.1
 
-### OTA <a name="wifiota"></a>
+### OTA
 OTA is enabled, use default IP address or if connected to a AP the correct address.
 Port is the default port.
 
-### Configuration options <a name="wificonfiguration"></a>
-
+### Configuration options
 After the first boot, there are some values needs to be set up.
 These items are maked with __*__ (star) in the list below.
 
@@ -177,8 +209,7 @@ to connect to. __*__
 - __WiFi password__ - The password of the network above. Note, that
 unsecured passwords are not supported in your protection. __*__
 
-### Blinking codes <a name="wifiblinkingcodes"></a>
-
+## Blinking codes
 Prevoius chapters were mentioned blinking patterns, now here is a
 table summarize the menaning of the blink codes.
 
@@ -190,8 +221,7 @@ network around it. You can connect to the device with your smartphone
 WiFi network.
 - __Mostly off with occasional short flash__ - The device is online.
 
-### Reset <a name="wifireset"></a>
-
+## Reset
 When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
 password to buld an AP. (E.g. in case of lost password)
 
