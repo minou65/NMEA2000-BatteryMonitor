@@ -30,7 +30,7 @@
 			- [Delay before full \[s\]](#delay-before-full-s)
 			- [Current threshold](#current-threshold)
 	- [WiFi](#wifi)
-		- [Default](#default)
+		- [Default password](#default-password)
 		- [Default IP address](#default-ip-address)
 		- [OTA](#ota)
 		- [Configuration options](#configuration-options)
@@ -176,7 +176,7 @@ When the current measured falls below the “Current threshold” parameter it w
 
 
 ## WiFi
-### Default
+### Default password
 When not connected to an AP the default password is 123456789
 
 ### Default IP address
