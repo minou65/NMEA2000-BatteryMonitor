@@ -146,13 +146,15 @@ Gassing can easily be observed in flooded batteries. Please note that the ‘oxy
 and AGM batteries also results in a reduced charge efficiency.
 
 #### Minimun SOC [%]
+The minimum SoC is the lowest level of charge that a battery can safely operate at without damaging its cells or reducing its capacity. It is usually expressed as a percentage of the maximum charge. For example, if a battery has a minimum SoC of 10%, it means that it should not be discharged below 10% of its full capacity.
 
 #### Replacment date
+The replacement date is the date when the battery was replaced with a new one. It is only for documentation
 
 #### Manufacturer
+Manufacturer can be used for documentation
 
 ### Battery full detection
-
 #### Voltage when full [V]
 The battery voltage must be above this voltage level to consider the battery as fully charged. As soon as the battery monitor detects that the 
 voltage of the battery has reached this “charged voltage” parameter and the current has dropped below the “tail current” parameter for a certain 
