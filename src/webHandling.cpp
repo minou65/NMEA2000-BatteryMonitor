@@ -306,6 +306,17 @@ void handleRoot() {
 
     page += HTML_End_Fieldset;
 
+    page += HTML_Start_Fieldset;
+    page += HTML_Fieldset_Legend;
+    page.replace("{l}", "Network");
+    page += HTML_Start_Table;
+
+    page += "<tr><td align=left>MAC Address:</td><td>" + String(WiFi.macAddress()) + "</td></tr>";
+    page += "<tr><td align=left>IP Address:</td><td>" + String(WiFi.localIP().toString().c_str()) + "</td></tr>";
+
+    page += HTML_End_Table;
+    page += HTML_End_Fieldset;
+
     page += "</td></tr>";
     page += HTML_End_Table;
 
