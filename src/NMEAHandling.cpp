@@ -1,6 +1,3 @@
-
-
-
 #define ESP32_CAN_TX_PIN GPIO_NUM_5  // Set CAN TX port to D5 
 #define ESP32_CAN_RX_PIN GPIO_NUM_4  // Set CAN RX port to D4
 
@@ -13,8 +10,8 @@
 #include "statusHandling.h"
 
 uint8_t gN2KSource = 22;
+uint8_t gN2KSID = 255;
 uint8_t gN2KInstance = 1;
-uint8_t gN2KSID = 1;
 
 tN2kSyncScheduler DCBatStatusScheduler(false, 1500, 500);
 tN2kSyncScheduler DCStatusScheduler(false, 1500, 510);

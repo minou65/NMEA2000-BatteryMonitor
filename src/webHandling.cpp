@@ -13,9 +13,7 @@
 #endif
 
 #include <time.h>
-//needed for library
 #include <DNSServer.h>
-
 #include <IotWebConf.h>
 
 #include "common.h"
@@ -56,14 +54,7 @@ tN2kBatChem gBatteryChemistry = N2kDCbc_LeadAcid;
 
 // -- We can add a legend to the separator
 IotWebConf iotWebConf(gCustomName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
-
-char InstanceValue[NUMBER_LEN];
-char SIDValue[NUMBER_LEN];
-char SourceValue[NUMBER_LEN];
-iotwebconf::ParameterGroup InstanceGroup = iotwebconf::ParameterGroup("InstanceGroup", "NMEA 2000 Settings");
-iotwebconf::NumberParameter InstanceParam = iotwebconf::NumberParameter("Instance", "InstanceParam", InstanceValue, NUMBER_LEN, "1", "1..255", "min='1' max='254' step='1'");
-iotwebconf::NumberParameter SIDParam = iotwebconf::NumberParameter("SID", "SIDParam", SIDValue, NUMBER_LEN, "255", "1..254", "min='1' max='255' step='1'");
-iotwebconf::NumberParameter SourceParam = iotwebconf::NumberParameter("N2KSource", "N2KSource", SourceValue, NUMBER_LEN, "22", nullptr, nullptr);
+NMEAConfig Config = NMEAConfig();
 
 char maxCurrentValue[NUMBER_LEN];
 char VoltageCalibrationFactorValue[NUMBER_LEN];
@@ -90,15 +81,12 @@ iotwebconf::SelectParameter BatType        = iotwebconf::SelectParameter("Type",
 iotwebconf::SelectParameter BatNomVoltType = iotwebconf::SelectParameter("Voltage", "BatNomVoltType", BatNomVoltValue, STRING_LEN, (char*)BatNomVoltValues, (char*)BatNomVoltNames, sizeof(BatNomVoltValues) / STRING_LEN, STRING_LEN, "1");
 iotwebconf::SelectParameter BatChemType    = iotwebconf::SelectParameter("Chemistrie", "BatChemType", BatChemValue, STRING_LEN, (char*)BatChemValues, (char*)BatChemNames, sizeof(BatChemValues) / STRING_LEN, STRING_LEN, "0");
 
-
-
 iotwebconf::NumberParameter battCapacity = iotwebconf::NumberParameter("Capacity [Ah]", "battAh", battCapacityValue, NUMBER_LEN, "100", "1..300", "min='1' max='300' step='1'");
 iotwebconf::NumberParameter chargeEfficiency = iotwebconf::NumberParameter("charge efficiency [%]", "cheff", chargeEfficiencyValue, NUMBER_LEN, "95", "1..100", "min='1' max='100' step='1'");
 iotwebconf::NumberParameter minSoc = iotwebconf::NumberParameter("Minimun SOC [%]", "minsoc", minSocValue, NUMBER_LEN, "10", "1..100", "min='1' max='100' step='1'");
 iotwebconf::DateParameter BatteryReplacmentDateParameter = iotwebconf::DateParameter("Replacment date", "BattDate", BatteryReplacmentDateValue, DATE_LEN, "2024-01-01");
 iotwebconf::TextParameter BatterymanufacturerParameter = iotwebconf::TextParameter("Manufacturer", "BattManufacturer", BatteryManufacturerValue, STRING_LEN);
 // TimeParameter BatteryReplacmentTimeParameter = TimeParameter("Replacment time", "BattTime", BatteryReplacmentTimeValue, TIME_LEN, "22:00");
-
 
 char tailCurrentValue[NUMBER_LEN];
 char fullVoltageValue[NUMBER_LEN];
@@ -109,7 +97,6 @@ iotwebconf::NumberParameter tailCurrent = iotwebconf::NumberParameter("Tail curr
 iotwebconf::NumberParameter fullVoltage = iotwebconf::NumberParameter("Voltage when full [V]", "fullV", fullVoltageValue, NUMBER_LEN, "12.85", "0..38", "min='0.01' max='38' step='0.01'");
 iotwebconf::NumberParameter fullDelay = iotwebconf::NumberParameter("Delay before full [s]", "fullDelay", fullDelayValue, NUMBER_LEN, "60", "1..7200", "min='1' max='7200' step='1'");
 iotwebconf::NumberParameter CurrentThreshold = iotwebconf::NumberParameter("Current threshold [A]", "CurrentThreshold", CurrentThresholdValue, NUMBER_LEN, "0.10", "0.00..2.00", "min='0.00' max='2.00' step='0.01'");
-
 
 void wifiStoreConfig() {
     iotWebConf.saveConfig();
@@ -154,11 +141,9 @@ void handleSetRuntime() {
 }
 
 void wifiSetup() {
-
-    InstanceGroup.addItem(&InstanceParam);
-    InstanceGroup.addItem(&SIDParam);
-    iotWebConf.addHiddenParameter(&SourceParam);
-    iotWebConf.addParameterGroup(&InstanceGroup);
+    Serial.begin(115200);
+    Serial.println();
+    Serial.println("starting up...");
 
     ShuntGroup.addItem(&shuntResistance);
     ShuntGroup.addItem(&maxCurrent);
@@ -183,6 +168,7 @@ void wifiSetup() {
     iotWebConf.setStatusPin(STATUS_PIN,ON_LEVEL);
     iotWebConf.setConfigPin(CONFIG_PIN);
 
+    iotWebConf.addParameterGroup(&Config);
     iotWebConf.addParameterGroup(&ShuntGroup);
     iotWebConf.addParameterGroup(&BatteryGroup);
     iotWebConf.addParameterGroup(&fullGroup);
@@ -215,10 +201,7 @@ void wifiLoop() {
   if (gSaveParams) {
       Serial.println(F("Parameters are changed,save them"));
 
-      String s;
-
-      s = (String)gN2KSource;
-      strncpy(SourceParam.valueBuffer, s.c_str(), NUMBER_LEN);
+      Config.SetSource(gN2KSource);
 
       iotWebConf.saveConfig();
       gSaveParams = false;
@@ -357,9 +340,9 @@ void convertParams() {
     gCurrentCalibrationFactor = atof(CurrentCalibrationFactorValue);
     gCurrentThreshold = atof(CurrentThresholdValue);
 
-    gN2KInstance = atoi(InstanceValue);
-    gN2KSID = atoi(SIDValue);
-    gN2KSource = atoi(SourceValue);
+    gN2KSource = Config.Source();
+    gN2KSID = Config.SID();
+    gN2KInstance = Config.Instance();
 }
 
 void configSaved(){ 
