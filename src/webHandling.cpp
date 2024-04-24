@@ -100,6 +100,16 @@ iotwebconf::NumberParameter fullVoltage = iotwebconf::NumberParameter("Voltage w
 iotwebconf::NumberParameter fullDelay = iotwebconf::NumberParameter("Delay before full [s]", "fullDelay", fullDelayValue, NUMBER_LEN, "60", "1..7200", "min='1' max='7200' step='1'");
 iotwebconf::NumberParameter CurrentThreshold = iotwebconf::NumberParameter("Current threshold [A]", "CurrentThreshold", CurrentThresholdValue, NUMBER_LEN, "0.10", "0.00..2.00", "min='0.00' max='2.00' step='0.01'");
 
+class CustomHtmlFormatProvider : public iotwebconf::HtmlFormatProvider {
+protected:
+    virtual String getFormEnd() {
+        String _s = HtmlFormatProvider::getFormEnd();
+        _s += F("</br>Return to <a href='/'>home page</a>.");
+        return _s;
+    }
+};
+CustomHtmlFormatProvider customHtmlFormatProvider;
+
 void wifiStoreConfig() {
     iotWebConf.saveConfig();
 }
@@ -169,6 +179,7 @@ void wifiSetup() {
      
     iotWebConf.setStatusPin(STATUS_PIN,ON_LEVEL);
     iotWebConf.setConfigPin(CONFIG_PIN);
+    iotWebConf.setHtmlFormatProvider(&customHtmlFormatProvider);
 
     iotWebConf.addParameterGroup(&Config);
     iotWebConf.addParameterGroup(&ShuntGroup);
