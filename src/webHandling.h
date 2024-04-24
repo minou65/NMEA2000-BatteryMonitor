@@ -56,7 +56,44 @@
 #define HTML_End_Doc "</html>";
 #define HTML_Fieldset_Legend "<legend>{l}</legend>"
 #define HTML_Table_Row "<tr><td>{n}</td><td>{v}</td></tr>";
-
+#define HTML_JAVA_Script \
+"<script>\n \
+    // get intial data straight away \n \
+    requestData(); \n \
+\n \
+    // request data updates every milliseconds\n \
+    setInterval(requestData, 5000);\n \
+\n \
+    function requestData() {\n \
+		var xhttp = new XMLHttpRequest();\n \
+		xhttp.onreadystatechange = function() {\n \
+			if (this.readyState == 4 && this.status == 200) {\n \
+				var json = JSON.parse(this.responseText);\n \
+				updateData(json);\n \
+			}\n \
+		};\n \
+        xhttp.open('GET', 'data', true);\n \
+		xhttp.send();\n \
+	}\n \
+\n \
+    function updateData(jsonData) { \n \
+        const VolatgeElement = document.getElementById('VoltageValue'); \n \
+		if (VolatgeElement) { VolatgeElement.innerHTML = jsonData.voltage; }\n \
+        const CurrentElement = document.getElementById('CurrentValue'); \n \
+		if (CurrentElement) { CurrentElement.innerHTML = jsonData.current; }\n \
+        const AverageCurrentElement = document.getElementById('AverageCurrentValue'); \n \
+		if (AverageCurrentElement) { AverageCurrentElement.innerHTML = jsonData.avgCurrent; }\n \
+        const SocElement = document.getElementById('SocValue'); \n \
+		if (SocElement) { SocElement.innerHTML = jsonData.soc; }\n \
+        const tTgElement = document.getElementById('tTgValue'); \n \
+		if (tTgElement) { tTgElement.innerHTML = jsonData.tTg; }\n \
+        const isFullElement = document.getElementById('isFullValue'); \n \
+		if (isFullElement) { isFullElement.innerHTML = jsonData.isFull; }\n \
+        const TemperatureElement = document.getElementById('TemperatureValue'); \n \
+		if (TemperatureElement) { TemperatureElement.innerHTML = jsonData.temperature; }\n \
+    }\n \
+</script>\
+";
 
 
 // -- Initial password to connect to the Thing, when it creates an own Access Point.

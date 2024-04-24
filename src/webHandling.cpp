@@ -234,7 +234,12 @@ void handleData() {
     _json += "\"current\":\"" + String(gBattery.current(), 2) + "\",";
     _json += "\"avgCurrent\":\"" + String(gBattery.averageCurrent(), 2) + "\",";
     _json += "\"soc\":\"" + String(gBattery.soc() * 100, 2) + "\",";
-    _json += "\"tTg\":\"" + String(gBattery.tTg()) + "\",";
+    if (gBattery.tTg() != INFINITY) {
+        _json += "\"tTg\":\"" + String(gBattery.tTg() / 3600) + "\",";
+    }
+    else {
+		_json += "\"tTg\":\"INFINITY\",";
+	}
     _json += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
     _json += "\"temperature\":\"" + String(gBattery.temperatur()) + "\",";
     _json += "\"batteryType\":\"" + String(gBatteryType) + "\",";
@@ -271,8 +276,9 @@ void handleRoot() {
     page += ".de{background-color:#ffaaaa;} .em{font-size:0.8em;color:#bb0000;padding-bottom:0px;} .c{text-align: center;} div,input,select{padding:5px;font-size:1em;} input{width:95%;} select{width:100%} input[type=checkbox]{width:auto;scale:1.5;margin:10px;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#16A1E7;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} fieldset{border-radius:0.3rem;margin: 0px;}";
     // page.replace("center", "left");
     page += "</style>";
-    page += "<meta http-equiv=refresh content=15 />";
+    // page += "<meta http-equiv=refresh content=15 />";
     page += HTML_Start_Body;
+    page += HTML_JAVA_Script;
     page += "<table border=0 align=center>";
     page += "<tr><td>";
 
@@ -282,21 +288,13 @@ void handleRoot() {
 
         page += HTML_Start_Table;
         if (gSensorInitialized) {
-            page += "<tr><td align=left>Battery Voltage:</td><td>" + String(gBattery.voltage(), 2) + "V" + "</td></tr>";
-            page += "<tr><td align=left>Shunt current:</td><td>" + String(gBattery.current(), 2) + "A" + "</td></tr>";
-            page += "<tr><td align=left>Avg consumption:</td><td>" + String(gBattery.averageCurrent() * -1, 2) + "A" + "</td></tr>";
-            page += "<tr><td align=left>State of charge:</td><td>" + String(gBattery.soc() * 100, 2) + "%</td></tr>";
-
-            if (gBattery.tTg() != INFINITY) {
-                uint16_t tTgh = gBattery.tTg() / 3600;
-                page += "<tr><td align=left>Time to go:</td><td>" + String(tTgh) + "h" + "</td></tr>";
-            }
-            else {
-                page += "<tr><td align=left>Time to go:</td><td> INFINITY </td></tr>";
-            }
-
-            page += "<tr><td align=left>Battery full:</td><td>" + String(gBattery.isFull() ? "true" : "false") + "</td></tr>";
-            page += "<tr><td align=left>Temperature:</td><td>" + String(gBattery.temperatur()) +"&deg;C" + "</td></tr>";
+            page += "<tr><td align=left>Battery Voltage:</td><td><span id='VoltageValue'>0</span>V</td></tr>";
+            page += "<tr><td align=left>Shunt current:</td><td><span id='CurrentValue'>0</span>A</td></tr>";
+            page += "<tr><td align=left>Avg consumption:</td><td><span id='AverageCurrentValue'>0</span>A</td></tr>";
+            page += "<tr><td align=left>State of charge:</td><td><span id='SocValue'>0</span>%</td></tr>";
+            page += "<tr><td align=left>Time to go:</td><td><span id='tTgValue'>0</span>h</td></tr>";
+            page += "<tr><td align=left>Battery full:</td><td><span id='isFullValue'>false</span></td></tr>";
+            page += "<tr><td align=left>Temperature:</td><td><span id='TemperatureValue'>0</span>&deg;C</td></tr>";
         }
         else {
             page += "<tr><td><div><font color=red size=+1><b>Sensor failure!</b></font></div></td></tr>";
