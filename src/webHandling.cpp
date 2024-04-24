@@ -25,6 +25,7 @@
 
 
 // -- Method declarations.
+void handleData();
 void handleRoot();
 void convertParams();
 
@@ -205,6 +206,7 @@ void wifiSetup() {
     // -- Set up required URL handlers on the web server.
     server.on("/", handleRoot);
     server.on("/config", [] { iotWebConf.handleConfig(); });
+    server.on("/data", HTTP_GET, []() { handleData(); });
     server.onNotFound([]() { iotWebConf.handleNotFound(); });
   
     server.on("/setruntime", handleSetRuntime);
@@ -224,6 +226,33 @@ void wifiLoop() {
       iotWebConf.saveConfig();
       gSaveParams = false;
   }
+}
+
+void handleData() {
+    String _json = "{";
+    _json += "\"voltage\":\"" + String(gBattery.voltage(), 2) + "\",";
+    _json += "\"current\":\"" + String(gBattery.current(), 2) + "\",";
+    _json += "\"avgCurrent\":\"" + String(gBattery.averageCurrent(), 2) + "\",";
+    _json += "\"soc\":\"" + String(gBattery.soc() * 100, 2) + "\",";
+    _json += "\"tTg\":\"" + String(gBattery.tTg()) + "\",";
+    _json += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
+    _json += "\"temperature\":\"" + String(gBattery.temperatur()) + "\",";
+    _json += "\"batteryType\":\"" + String(gBatteryType) + "\",";
+    _json += "\"batteryVoltage\":\"" + String(gBatteryVoltage) + "\",";
+    _json += "\"batteryChemistry\":\"" + String(gBatteryChemistry) + "\",";
+    _json += "\"capacity\":\"" + String(gCapacityAh) + "\",";
+    _json += "\"chargeEfficiency\":\"" + String(gChargeEfficiencyPercent) + "\",";
+    _json += "\"minSoc\":\"" + String(gMinPercent) + "\",";
+    _json += "\"tailCurrent\":\"" + String(gTailCurrentmA) + "\",";
+    _json += "\"fullVoltage\":\"" + String(gFullVoltagemV) + "\",";
+    _json += "\"fullDelay\":\"" + String(gFullDelayS) + "\",";
+    _json += "\"currentThreshold\":\"" + String(gCurrentThreshold) + "\",";
+    _json += "\"shuntResistance\":\"" + String(gShuntResistancemR) + "\",";
+    _json += "\"maxCurrent\":\"" + String(gMaxCurrentA) + "\",";
+    _json += "\"voltageCalibrationFactor\":\"" + String(gVoltageCalibrationFactor) + "\",";
+    _json += "\"currentCalibrationFactor\":\"" + String(gCurrentCalibrationFactor) + "\"";
+    _json += "}";
+    server.send(200, "text/plain", _json);
 }
 
 void handleRoot() {
