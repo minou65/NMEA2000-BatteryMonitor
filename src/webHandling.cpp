@@ -20,9 +20,40 @@
 #include "common.h"
 #include "webHandling.h"
 #include "statusHandling.h"
+#include "IotWebRoot.h"
 
 #include <N2kTypes.h>
 
+#define SOC_RESPONSE \
+"<!DOCTYPE HTML>\
+    <html> <head>\
+            <meta charset=\"UTF-8\">\
+            <meta http-equiv=\"refresh\" content=\"3; url=/\">\
+            <script type=\"text/javascript\">\
+                window.location.href = \"/\"\
+            </script>\
+            <title>SOC set</title>\
+        </head>\
+        <body>\
+            Soc has been updated <br><a href='/'>Back</a>\
+        </body>\
+    </html>\n"
+
+#define SOC_FORM \
+"\
+<table border=0 align=center>\
+    <tr><td>\
+        <form align=left action=\"/setsoc\" method=\"POST\">\
+            <fieldset style=\"border: 1px solid\">\
+                <legend>Set state of charge</legend>\
+                <label for=\"soc\">New battery soc</label><br>\
+                <input name=\"soc\" id=\"soc\" value=\"100\" /><br><br>\
+                <button type=\"submit\">Set</button>\
+            </fieldset>\
+        </form>\
+    </td></td>\
+</table>\
+"
 
 // -- Method declarations.
 void handleData();
@@ -230,6 +261,7 @@ void wifiLoop() {
 
 void handleData() {
     String _json = "{";
+    _json += "\"rssi\":\"" + String(WiFi.RSSI()) + "\",";
     _json += "\"voltage\":\"" + String(gBattery.voltage(), 2) + "\",";
     _json += "\"current\":\"" + String(gBattery.current(), 2) + "\",";
     _json += "\"avgCurrent\":\"" + String(gBattery.averageCurrent(), 2) + "\",";
@@ -238,7 +270,7 @@ void handleData() {
         _json += "\"tTg\":\"" + String(gBattery.tTg() / 3600) + "\",";
     }
     else {
-		_json += "\"tTg\":\"INFINITY\",";
+		_json += "\"tTg\":\"888888\",";
 	}
     _json += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
     _json += "\"temperature\":\"" + String(gBattery.temperatur()) + "\",";
@@ -260,107 +292,100 @@ void handleData() {
     server.send(200, "text/plain", _json);
 }
 
+class MyHtmlRootFormatProvider : public HtmlRootFormatProvider {
+protected:
+    virtual String getScriptInner() {
+        String _s = HtmlRootFormatProvider::getScriptInner();
+        _s.replace("{millisecond}", "5000");
+        _s += F("function updateData(jsonData) {\n");
+        _s += F("   document.getElementById('RSSIValue').innerHTML = jsonData.rssi + \"dBm\" \n");
+		_s += F("   document.getElementById('VoltageValue').innerHTML = jsonData.voltage + \"V\" \n");
+		_s += F("   document.getElementById('CurrentValue').innerHTML = jsonData.current + \"A\" \n");
+		_s += F("   document.getElementById('AverageCurrentValue').innerHTML = jsonData.avgCurrent + \"A\" \n");
+		_s += F("   document.getElementById('SocValue').innerHTML = jsonData.soc + \"%\" \n");
+		_s += F("   document.getElementById('tTgValue').innerHTML = jsonData.tTg + \"h\" \n");
+		_s += F("   document.getElementById('isFullValue').innerHTML = jsonData.isFull \n");
+		_s += F("   document.getElementById('TemperatureValue').innerHTML = jsonData.temperature + \"&deg;C\" \n");
+
+        _s += F("}\n");
+
+        return _s;
+    }
+};
+
 void handleRoot() {
     // -- Let IotWebConf test and handle captive portal requests.
-    if (iotWebConf.handleCaptivePortal())
-    {
-    // -- Captive portal request were already served.
-    return;
+    if (iotWebConf.handleCaptivePortal()){
+        return;
     }
 
-    String page = HTML_Start_Doc;
-    page.replace("{v}", iotWebConf.getThingName());
+    MyHtmlRootFormatProvider rootFormatProvider;
 
+    String _response = "";
+    _response += rootFormatProvider.getHtmlHead(iotWebConf.getThingName());
+    _response += rootFormatProvider.getHtmlStyle();
+    _response += rootFormatProvider.getHtmlHeadEnd();
+    _response += rootFormatProvider.getHtmlScript();
 
-    page += "<style>";
-    page += ".de{background-color:#ffaaaa;} .em{font-size:0.8em;color:#bb0000;padding-bottom:0px;} .c{text-align: center;} div,input,select{padding:5px;font-size:1em;} input{width:95%;} select{width:100%} input[type=checkbox]{width:auto;scale:1.5;margin:10px;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#16A1E7;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} fieldset{border-radius:0.3rem;margin: 0px;}";
-    // page.replace("center", "left");
-    page += "</style>";
-    // page += "<meta http-equiv=refresh content=15 />";
-    page += HTML_Start_Body;
-    page += HTML_JAVA_Script;
-    page += "<table border=0 align=center>";
-    page += "<tr><td>";
+    _response += rootFormatProvider.getHtmlTable();
+    _response += rootFormatProvider.getHtmlTableRow() + rootFormatProvider.getHtmlTableCol();
 
-    page += HTML_Start_Fieldset;
-    page += HTML_Fieldset_Legend;
-    page.replace("{l}", "Battery status");
+    _response += F("<fieldset align=left style=\"border: 1px solid\">\n");
+    _response += F("<table border=\"0\" align=\"center\" width=\"100%\">\n");
+    _response += F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n");
+    _response += rootFormatProvider.getHtmlTableEnd();
+    _response += rootFormatProvider.getHtmlFieldsetEnd();
 
-        page += HTML_Start_Table;
-        if (gSensorInitialized) {
-            page += "<tr><td align=left>Battery Voltage:</td><td><span id='VoltageValue'>0</span>V</td></tr>";
-            page += "<tr><td align=left>Shunt current:</td><td><span id='CurrentValue'>0</span>A</td></tr>";
-            page += "<tr><td align=left>Avg consumption:</td><td><span id='AverageCurrentValue'>0</span>A</td></tr>";
-            page += "<tr><td align=left>State of charge:</td><td><span id='SocValue'>0</span>%</td></tr>";
-            page += "<tr><td align=left>Time to go:</td><td><span id='tTgValue'>0</span>h</td></tr>";
-            page += "<tr><td align=left>Battery full:</td><td><span id='isFullValue'>false</span></td></tr>";
-            page += "<tr><td align=left>Temperature:</td><td><span id='TemperatureValue'>0</span>&deg;C</td></tr>";
-        }
-        else {
-            page += "<tr><td><div><font color=red size=+1><b>Sensor failure!</b></font></div></td></tr>";
-        }
-        page += HTML_End_Table;
+    _response += rootFormatProvider.getHtmlFieldset("Temperature");
+    _response += rootFormatProvider.getHtmlTable();
+	_response += rootFormatProvider.getHtmlTableRowSpan("Battery Voltage", "VoltageValue", "no data");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Shunt current", "CurrentValue", "no data");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Avg consumption", "AverageCurrentValue", "no data");
+	_response += rootFormatProvider.getHtmlTableRowSpan("State of charge", "SocValue", "no data");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Time to go", "tTgValue", "no data");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Battery full", "isFullValue", "no data");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Temperature", "TemperatureValue", "no data");
+	_response += rootFormatProvider.getHtmlTableEnd();
+	_response += rootFormatProvider.getHtmlFieldsetEnd();
 
-        page += HTML_End_Fieldset;
+	_response += rootFormatProvider.getHtmlFieldset("Shunt configuration");
+	_response += rootFormatProvider.getHtmlTable();
+	_response += rootFormatProvider.getHtmlTableRowSpan("Shunt resistance", "shuntResistance", String(gShuntResistancemR, 3) + "m&#8486;");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Shunt max current", "maxCurrent", String(gMaxCurrentA) + "A");
+	_response += rootFormatProvider.getHtmlTableEnd();
+	_response += rootFormatProvider.getHtmlFieldsetEnd();
 
-        page += HTML_Start_Fieldset;
-        page += HTML_Fieldset_Legend;
-        page.replace("{l}", "Shunt configuration");
+	_response += rootFormatProvider.getHtmlFieldset("Battery configuration");
+	_response += rootFormatProvider.getHtmlTable();
+	_response += rootFormatProvider.getHtmlTableRowSpan("Type", "BatType", String(BatTypeNames[gBatteryType]));
+	_response += rootFormatProvider.getHtmlTableRowSpan("Capacity", "battCapacity", String(gCapacityAh) + "Ah");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Efficiency", "chargeEfficiency", String(gChargeEfficiencyPercent) + "%");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Min SOC", "minSoc", String(gMinPercent) + "%");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Tail current", "tailCurrent", String((gTailCurrentmA / 1000), 3) + "A");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Full voltage", "fullVoltage", String((gFullVoltagemV / 1000), 2) + "V");
+	_response += rootFormatProvider.getHtmlTableRowSpan("Full delay", "fullDelay", String(gFullDelayS) + "s");
+	_response += rootFormatProvider.getHtmlTableEnd();
+	_response += rootFormatProvider.getHtmlFieldsetEnd();
 
-        page += "<table border=0 align=center width=100%>";
-        page += "<tr><td align=left>Shunt resistance:</td><td>" + String(gShuntResistancemR, 3) + "m&#8486;</td></tr>";
-        page += "<tr><td align=left>Shunt max current:</td><td>" + String(gMaxCurrentA) + "A</td></tr>";
+	_response += rootFormatProvider.getHtmlFieldset("Network");
+	_response += rootFormatProvider.getHtmlTable();
+	_response += rootFormatProvider.getHtmlTableRowText("MAC Address", WiFi.macAddress());
+	_response += rootFormatProvider.getHtmlTableRowText("IP Address", WiFi.localIP().toString().c_str());
+	_response += rootFormatProvider.getHtmlTableEnd();
+	_response += rootFormatProvider.getHtmlFieldsetEnd();
 
-    page += HTML_End_Table;
-    page += HTML_End_Fieldset;
+	_response += rootFormatProvider.addNewLine(2);
 
-    page += HTML_Start_Fieldset;
-    page += HTML_Fieldset_Legend;
-    page.replace("{l}", "Battery configuration");
-  
-        page += "<table border=0 align=center width=100%>";
-        page += "<tr><td align=left>Type:</td><td>" + String(BatTypeNames[gBatteryType]) + "</td></tr>";
-        page += "<tr><td align=left>Capacity:</td><td>" + String(gCapacityAh) + "Ah</td></tr>";
-        page += "<tr><td align=left>Efficiency:</td><td>" + String(gChargeEfficiencyPercent) + "%</td></tr>";
-        page += "<tr><td align=left>Min SOC:</td><td>" + String(gMinPercent) + "%</td></tr>";
+	_response += rootFormatProvider.getHtmlTable();
+	_response += rootFormatProvider.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration.");
+    _response += rootFormatProvider.getHtmlTableRowText(rootFormatProvider.getHtmlVersion(Version));
+    _response += rootFormatProvider.getHtmlTableEnd();
 
-        float TailCurrentA = gTailCurrentmA;
-        float FullVoltageV = gFullVoltagemV;
-        page += "<tr><td align=left>Tail current:</td><td>" + String((TailCurrentA / 1000), 3) + "A</td></tr>";
-        page += "<tr><td align=left>Full voltage:</td><td>" + String((FullVoltageV / 1000),2) + "V</td></tr>";
-        page += "<tr><td align=left>Full delay:</td><td>" + String(gFullDelayS) + "s</td></tr>";
+    _response += rootFormatProvider.getHtmlTableColEnd() + rootFormatProvider.getHtmlTableRowEnd();
+    _response += rootFormatProvider.getHtmlTableEnd();
+    _response += rootFormatProvider.getHtmlEnd();
 
-    page += HTML_End_Table;
-
-    page += HTML_End_Fieldset;
-
-    page += HTML_Start_Fieldset;
-    page += HTML_Fieldset_Legend;
-    page.replace("{l}", "Network");
-    page += HTML_Start_Table;
-
-    page += "<tr><td align=left>MAC Address:</td><td>" + String(WiFi.macAddress()) + "</td></tr>";
-    page += "<tr><td align=left>IP Address:</td><td>" + String(WiFi.localIP().toString().c_str()) + "</td></tr>";
-
-    page += HTML_End_Table;
-    page += HTML_End_Fieldset;
-
-    page += "</td></tr>";
-    page += HTML_End_Table;
-
-    page += "<br>";
-    page += "<br>";
-
-    page += HTML_Start_Table;
-    page += "<tr><td align=left>Go to <a href = 'config'>configure page</a> to change configuration.</td></tr>";
-    page += "<tr><td align=left>Go to <a href='setruntime'>runtime modification page</a> to change runtime data.</td></tr>";
-    page += "<tr><td><font size=1>Version: " + String(Version) + "</font></td></tr>";
-    page += HTML_End_Table;
-    page += HTML_End_Body;
-
-    page += HTML_End_Doc;
-
-    server.send(200, "text/html", page);
+	server.send(200, "text/html", _response);
 }
 
 void convertParams() {
