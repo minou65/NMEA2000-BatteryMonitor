@@ -4,6 +4,7 @@
 - [NMEA Battery monitor](#nmea-battery-monitor)
 	- [Table of contents](#table-of-contents)
 	- [Description ](#description-)
+	- [Schema](#schema)
 	- [NMEA 2000](#nmea-2000)
 	- [Librarys ](#librarys-)
 	- [Required hardware](#required-hardware)
@@ -38,11 +39,21 @@
 	- [Reset](#reset)
 
 ## Description <a name="description"></a>
+The INA226 is a versatile current and power monitor chip that can be used to create a battery monitor. It measures both voltage and current, taking into account the direction of current flow (whether it’s from or to the battery). Based on the configured ampere-hours (Ah), current, and voltage, it calculates the battery's state of charge.
 
-This project uses an INA226 shunt amplifier to implement some smart shunt functionality. 
-It sums up the charges that move through the shunt. With this information it tries to calculate the load status of an attached battery. The INA226 should be connected to the shunt so that charges going into the battery are positive and those coming out of the battery are negtive.
+Here are some key details about the INA226:
+- Voltage Measurement Range: 0V to 36V DC
+- Shunt Voltage Range (for current measurement): ±82mV
+- The INA226 can handle shunt voltages as low as 60mV and as high as 82mV, depending on the current and the shunt resistor used
 
-All information is sent to a plotter via NMEA 200 protocol. They can also be consumed via Web UI.
+The INA226 should be connected to the shunt so that charges going into the battery are positive and those coming out of the battery are negtive.
+
+ The system communicates via the NMEA 2000 protocol, sending temperature values and alarms as NMEA 2000 messages over an NMEA bus. Configuration is done through a web interface, and real-time values can be viewed on a website. Additionally, there's a link on the configuration page for convenient firmware updates.
+
+## Schema
+<img src="sch/schema.png" width="600" alt="schema">
+
+<img src="sch/prinzip.png" width="600" alt="pricip schema">
 
 ## NMEA 2000
 The following PGN's will be send
@@ -64,10 +75,7 @@ The Software has been created using Visual Studio with the addon Visual Micro. I
 
 ## Required hardware
 
-For measuring the current you need an __INA226 breakout board__ as you can acquire from 
-- [Amazon](https://www.amazon.de/ALAMSCN-Bi-Directional-Voltage-Current-Monitoring/dp/B09Z66QSPB/ref=sr_1_4?keywords=ina226&qid=1674921078&sr=8-4)
-- [Ebay](https://www.ebay.de/itm/403798012528?mkcid=16&mkevt=1&mkrid=707-127634-2357-0&ssspo=3VTGCNeFTJm&sssrc=2047675&ssuid=0YZwUxrsQgu&widget_ver=artemis&media=COPY)
-- [AliExpress](https://de.aliexpress.com/item/1005001593541480.html?spm=a2g0o.productlist.main.3.56f351729HIcrL&algo_pvid=355d9f06-c6bf-45e7-922c-611aa36108cf&algo_exp_id=355d9f06-c6bf-45e7-922c-611aa36108cf-1&pdp_ext_f=%7B%22sku_id%22%3A%2212000016714954183%22%7D&pdp_npi=2%40dis%21EUR%213.22%212.06%21%21%21%21%21%402145294416749211574187658d06b7%2112000016714954183%21sea&curPageLogUid=PnWeLZQyi9Cc)
+For measuring the current you need an __INA226 breakout board__
 
 __Before you can use the sensor board you have to remove the shunt resistor soldered to that board and instead use a bigger shunt, e.g. a 100A/75mV.__
 Make sure that the shunt supports the current your system produces. You can set the parameters of the shunt in the web interface.
@@ -81,11 +89,8 @@ There are plenty of options out there. Make sure that you select a resistor appr
 If you have a 48V System, be aware of the fact that the INA226 does only support voltages up to 36V (40V max). You need a voltage divider to make shure your sensor is not destroyed. 
 The code assumes that you use a __470KOhm and a 1MOhm__ resistor, measuring across the 1MOhm towards GND. `( + --470K-- --1M -- GND )` The smaller you choose the small resistor in comparison to the bigger one, the more accurate the measurement will be.
 
-__Always__ use a fuse in the + line from the battery to the __microcontroller__!!
+[!IMPORTANT]**Warning:** Allways use a fuse in the + line from the battery to the sensor!![!IMPORTANT]
 
-The following [schema](/sch/NMEA_BatteryMonitor%201-2.pdf) show you, how to put all together.
-
-And the following Link is the [Cabling schema](/sch/NMEA_BatteryMonitor%202-2.pdf)
 
 ## Configuration
 #### Instance
@@ -95,7 +100,6 @@ This should be unique at least on one device. May be best to have it unique over
 Sequence identifier. In most cases you can use just 255 for SID. The sequence identifier field is used to tie different PGNs data together to same sampling or calculation time.
 
 ### Shunt settings
-
 #### Shunt resistance [mΩ]
 
 #### Expected max current [A]
@@ -105,7 +109,6 @@ Sequence identifier. In most cases you can use just 255 for SID. The sequence id
 #### Current calibration factor
 
 ### Battery
-
 #### Type
 one of the following
 - flooded
@@ -157,25 +160,24 @@ Manufacturer can be used for documentation
 ### Battery full detection
 #### Voltage when full [V]
 The battery voltage must be above this voltage level to consider the battery as fully charged. As soon as the battery monitor detects that the 
-voltage of the battery has reached this “charged voltage” parameter and the current has dropped below the “tail current” parameter for a certain 
+voltage of the battery has reached this "charged voltage" parameter and the current has dropped below the "tail current" parameter for a certain 
 amount of time, the battery monitor will set the state of charge to 100%.
 
 #### Tail current [A]
-The battery is considered as fully charged once the charge current has dropped to less than this “Tail current” parameter. 
-The “Tail current” parameter is expressed as a percentage of the battery capacity.
+The battery is considered as fully charged once the charge current has dropped to less than this "Tail current" parameter. 
+The "Tail current" parameter is expressed as a percentage of the battery capacity.
 
 Note that some battery chargers stop charging when the current drops below a set threshold. In these cases, the tail current must be set 
 higher than this threshold.
 
-As soon as the battery monitor detects that the voltage of the battery has reached the set “Charged voltage” parameter and the current has 
-dropped below this “Tail current” parameter for a certain amount of time, the battery monitor will set the state of charge to 100%.
+As soon as the battery monitor detects that the voltage of the battery has reached the set "Charged voltage" parameter and the current has 
+dropped below this "Tail current" parameter for a certain amount of time, the battery monitor will set the state of charge to 100%.
 
 #### Delay before full [s]
 This is the time the "Voltage when full [V]" parameter and the "Tail current [A]" parameter must be met in order to consider the battery fully charged.
 
 #### Current threshold
-When the current measured falls below the “Current threshold” parameter it will be considered zero. The “Current threshold” is used to cancel out very small currents that can negatively affect the long-term state of charge readout in noisy environments. For example, if the actual long-term current is 0.0A and, due to injected noise or small offsets, the battery monitor measures ­0.05A the battery monitor might, in the long term, incorrectly indicate that the battery is empty or will need to be recharged. When the current threshold in this example is set to 0.1A, the battery monitor calculates with 0.0A so that errors are eliminated.
-
+When the current measured falls below the "Current threshold" parameter it will be considered zero. The "Current threshold" is used to cancel out very small currents that can negatively affect the long-term state of charge readout in noisy environments. For example, if the actual long-term current is 0.0A and, due to injected noise or small offsets, the battery monitor measures ­0.05A the battery monitor might, in the long term, incorrectly indicate that the battery is empty or will need to be recharged. When the current threshold in this example is set to 0.1A, the battery monitor calculates with 0.0A so that errors are eliminated.
 
 ## WiFi
 ### Default password
@@ -227,4 +229,4 @@ WiFi network.
 When CONFIG_PIN is pulled to ground on startup, the Thing will use the initial
 password to buld an AP. (E.g. in case of lost password)
 
-Reset pin is D3 / IO17
+Reset pin is pin 13
