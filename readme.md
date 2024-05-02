@@ -4,6 +4,7 @@
 - [NMEA Battery monitor](#nmea-battery-monitor)
 	- [Table of contents](#table-of-contents)
 	- [Description ](#description-)
+	- [Disclaimer](#disclaimer)
 	- [Schema](#schema)
 	- [NMEA 2000](#nmea-2000)
 	- [Librarys ](#librarys-)
@@ -50,6 +51,9 @@ The INA226 should be connected to the shunt so that charges going into the batte
 
  The system communicates via the NMEA 2000 protocol, sending temperature values and alarms as NMEA 2000 messages over an NMEA bus. Configuration is done through a web interface, and real-time values can be viewed on a website. Additionally, there's a link on the configuration page for convenient firmware updates.
 
+ ## Disclaimer
+ [!IMPORTANT]**Warning:** Allways use a fuse in the + line from the battery to the sensor!![!IMPORTANT]
+
 ## Schema
 <img src="sch/schema.png" width="600" alt="schema">
 
@@ -88,9 +92,6 @@ There are plenty of options out there. Make sure that you select a resistor appr
 
 If you have a 48V System, be aware of the fact that the INA226 does only support voltages up to 36V (40V max). You need a voltage divider to make shure your sensor is not destroyed. 
 The code assumes that you use a __470KOhm and a 1MOhm__ resistor, measuring across the 1MOhm towards GND. `( + --470K-- --1M -- GND )` The smaller you choose the small resistor in comparison to the bigger one, the more accurate the measurement will be.
-
-[!IMPORTANT]**Warning:** Allways use a fuse in the + line from the battery to the sensor!![!IMPORTANT]
-
 
 ## Configuration
 #### Instance
