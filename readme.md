@@ -3,13 +3,14 @@
 ## Table of contents
 - [NMEA Battery monitor](#nmea-battery-monitor)
 	- [Table of contents](#table-of-contents)
-	- [Description ](#description-)
+	- [Description](#description)
 	- [Disclaimer](#disclaimer)
 	- [Schema](#schema)
 	- [NMEA 2000](#nmea-2000)
-	- [Librarys ](#librarys-)
+	- [Librarys](#librarys)
 	- [Required hardware](#required-hardware)
 	- [Configuration](#configuration)
+		- [NEMA](#nema)
 			- [Instance](#instance)
 			- [SID](#sid)
 		- [Shunt settings](#shunt-settings)
@@ -39,7 +40,7 @@
 	- [Blinking codes](#blinking-codes)
 	- [Reset](#reset)
 
-## Description <a name="description"></a>
+## Description
 The INA226 is a versatile current and power monitor chip that can be used to create a battery monitor. It measures both voltage and current, taking into account the direction of current flow (whether it’s from or to the battery). Based on the configured ampere-hours (Ah), current, and voltage, it calculates the battery's state of charge.
 
 Here are some key details about the INA226:
@@ -65,7 +66,7 @@ The following PGN's will be send
 - 127508
 - 127513
 
-## Librarys <a name="libs"></a>
+## Librarys 
 
 The Software has been created using Visual Studio with the addon Visual Micro. In order to build it you als need some libraries.
 
@@ -94,6 +95,7 @@ If you have a 48V System, be aware of the fact that the INA226 does only support
 The code assumes that you use a __470KOhm and a 1MOhm__ resistor, measuring across the 1MOhm towards GND. `( + --470K-- --1M -- GND )` The smaller you choose the small resistor in comparison to the bigger one, the more accurate the measurement will be.
 
 ## Configuration
+### NEMA
 #### Instance
 This should be unique at least on one device. May be best to have it unique over all devices sending this PGN. A total of 5 instances are occupied by the device. Starting with the number set here.
 
@@ -134,7 +136,7 @@ Please note that the sensor is built for a maximum voltage of 40V without any sp
 - NiMh
 
 #### Capacity
-This parameter is used to tell the battery monitor how big the battery is. This setting should already have been done during the initial installation.
+This parameter is used to tell the battery monitor how big the battery is.
 
 The setting is the battery capacity in Amp-hours (Ah).
 
@@ -163,6 +165,14 @@ Manufacturer can be used for documentation
 The battery voltage must be above this voltage level to consider the battery as fully charged. As soon as the battery monitor detects that the 
 voltage of the battery has reached this "charged voltage" parameter and the current has dropped below the "tail current" parameter for a certain 
 amount of time, the battery monitor will set the state of charge to 100%.
+
+The following table can help set the correct value
+
+| Type | fully charged |
+| --- | --- |
+| 12V lead acid | 12.85V |
+| 12V AGM | 12.85V |
+| 12V LiIon | 12.65V |
 
 #### Tail current [A]
 The battery is considered as fully charged once the charge current has dropped to less than this "Tail current" parameter. 
