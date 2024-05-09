@@ -59,6 +59,8 @@
 void handleData();
 void handleRoot();
 void convertParams();
+bool connectAp(const char* apName, const char* password);
+void connectWifi(const char* ssid, const char* password);
 
 // -- Callback methods.
 void configSaved();
@@ -70,6 +72,7 @@ HTTPUpdateServer httpUpdater;
 
 bool gParamsChanged = true;
 bool gSaveParams = false;
+bool startAPMode = true;
 
 uint16_t gCapacityAh;
 uint16_t gChargeEfficiencyPercent;
@@ -89,6 +92,9 @@ tN2kBatChem gBatteryChemistry = N2kDCbc_LeadAcid;
 // -- We can add a legend to the separator
 IotWebConf iotWebConf(gCustomName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
 NMEAConfig Config = NMEAConfig();
+
+char APModeValue[STRING_LEN];
+iotwebconf::CheckboxParameter APModeParam = iotwebconf::CheckboxParameter("start AP only at boot sequence", "APModeID", APModeValue, STRING_LEN, false);
 
 char maxCurrentValue[NUMBER_LEN];
 char VoltageCalibrationFactorValue[NUMBER_LEN];
@@ -218,6 +224,8 @@ void wifiSetup() {
     iotWebConf.addParameterGroup(&BatteryGroup);
     iotWebConf.addParameterGroup(&fullGroup);
 
+    iotWebConf.addSystemParameter(&APModeParam);
+
     // -- Define how to handle updateServer calls.
     iotWebConf.setupUpdateServer(
         [](const char* updatePath) { httpUpdater.setup(&server, updatePath); },
@@ -228,6 +236,9 @@ void wifiSetup() {
 
     iotWebConf.setFormValidator(formValidator);
     iotWebConf.getApTimeoutParameter()->visible = true;
+
+    iotWebConf.setApConnectionHandler(&connectAp);
+    iotWebConf.setWifiConnectionHandler(&connectWifi);
 
     // -- Initializing the configuration.
     iotWebConf.init();
@@ -257,6 +268,13 @@ void wifiLoop() {
       iotWebConf.saveConfig();
       gSaveParams = false;
   }
+
+  if ((iotWebConf.getState() == iotwebconf::OnLine) && (APModeParam.isChecked()) && startAPMode) {
+	  Serial.println(F("start AP mode only at boot sequence"));
+	  startAPMode = false;
+  }
+
+
 }
 
 void handleData() {
@@ -418,6 +436,11 @@ void convertParams() {
 void configSaved(){ 
   convertParams();
   gParamsChanged = true;
+
+  if (!APModeParam.isChecked()) {
+	  Serial.println(F("start allways AP mode"));
+	  startAPMode = true;
+  }
 } 
 
 bool formValidator(iotwebconf::WebRequestWrapper* webRequestWrapper){ 
@@ -479,3 +502,21 @@ bool formValidator(iotwebconf::WebRequestWrapper* webRequestWrapper){
 
   return result;
   }
+
+bool connectAp(const char* apName, const char* password){
+    if (startAPMode){
+        Serial.println("starting AP mode ....");
+        return WiFi.softAP(apName, password);    
+    }
+	else {
+        Serial.println(F("start AP mode only at boot sequence"));
+        WiFi.mode(WIFI_MODE_STA);
+		return true;
+	}
+}
+
+void connectWifi(const char* ssid, const char* password){
+	Serial.println("Connecting to WiFi ...");
+    WiFi.begin(ssid, password);
+}
+
