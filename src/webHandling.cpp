@@ -15,12 +15,17 @@
 #include <time.h>
 #include <DNSServer.h>
 #include <IotWebConf.h>
-#include <IotWebConfESP32HTTPUpdateServer.h>
+#include "IotWebConfAsyncClass.h"
+#include "IotWebConfAsyncUpdateServer.h"
+#include "IotWebRoot.h"
+#include <WebSerial.h>
+
 
 #include "common.h"
 #include "webHandling.h"
 #include "statusHandling.h"
-#include "IotWebRoot.h"
+#include "favicon.h"
+
 
 #include <N2kTypes.h>
 
@@ -56,19 +61,21 @@
 "
 
 // -- Method declarations.
-void handleData();
-void handleRoot();
+void handleSetRuntime(AsyncWebServerRequest* request);
+void onSetSoc(AsyncWebServerRequest* request);
+void handleData(AsyncWebServerRequest* request);
+void handleRoot(AsyncWebServerRequest* request);
 void convertParams();
 bool connectAp(const char* apName, const char* password);
 void connectWifi(const char* ssid, const char* password);
 
 // -- Callback methods.
 void configSaved();
-bool formValidator(iotwebconf::WebRequestWrapper*);
 
 DNSServer dnsServer;
-WebServer server(80);
-HTTPUpdateServer httpUpdater;
+AsyncWebServer server(80);
+AsyncWebServerWrapper asyncWebServerWrapper(&server);
+AsyncUpdateServer AsyncUpdater;
 
 bool gParamsChanged = true;
 bool gSaveParams = false;
@@ -90,7 +97,7 @@ tN2kBatChem gBatteryChemistry = N2kDCbc_LeadAcid;
 
 
 // -- We can add a legend to the separator
-IotWebConf iotWebConf(gCustomName, &dnsServer, &server, wifiInitialApPassword, CONFIG_VERSION);
+IotWebConf iotWebConf(gCustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
 NMEAConfig Config = NMEAConfig();
 
 char APModeValue[STRING_LEN];
@@ -142,6 +149,7 @@ class CustomHtmlFormatProvider : public iotwebconf::HtmlFormatProvider {
 protected:
     virtual String getFormEnd() {
         String _s = HtmlFormatProvider::getFormEnd();
+        _s += F("</br><form action='/reboot' method='get'><button type='submit'>Reboot</button></form>");
         _s += F("</br>Return to <a href='/'>home page</a>.");
         return _s;
     }
@@ -154,40 +162,6 @@ void wifiStoreConfig() {
 
 void wifiConnected(){
    ArduinoOTA.begin();
-}
-
-void onSetSoc() {
-    String soc = server.arg("soc");
-    soc.trim();
-    if(!soc.isEmpty()) {
-        float socVal = soc.toInt() / 100.00;
-        gBattery.setBatterySoc((float)socVal);
-        //Serial.printf("Set soc to %.2f",gBattery.soc());
-    }
-
-    server.send(200, "text/html", SOC_RESPONSE);
-} 
-
-void handleSetRuntime() {
-
-    String page = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>{v}</title>";
-    page.replace("{v}", "Battery monitor");
-    page += "<style>";
-    page += ".de{background-color:#ffaaaa;} .em{font-size:0.8em;color:#bb0000;padding-bottom:0px;} .c{text-align: center;} div,input,select{padding:5px;font-size:1em;} input{width:95%;} select{width:100%} input[type=checkbox]{width:auto;scale:1.5;margin:10px;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#16A1E7;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} fieldset{border-radius:0.3rem;margin: 0px;}";
-    // page.replace("center", "left");
-    page += "</style>";
-    page += "</head><body>";
-    page += SOC_FORM;
-
-    page += "<table border=0 align=center>";
-    page += "<tr><td align=left>Go to <a href = 'config'>configure page</a> to change configuration.</td></tr>";
-    page += "<tr><td align=left>Go to <a href='/'>main page</a>.</td></tr>";
-    page += "</table>";
-    page += "</body> </html>";
-
-    page += "</body></html>\n";
-
-  server.send(200, "text/html", page);
 }
 
 void wifiSetup() {
@@ -226,15 +200,13 @@ void wifiSetup() {
 
     iotWebConf.addSystemParameter(&APModeParam);
 
-    // -- Define how to handle updateServer calls.
     iotWebConf.setupUpdateServer(
-        [](const char* updatePath) { httpUpdater.setup(&server, updatePath); },
-        [](const char* userName, char* password) { httpUpdater.updateCredentials(userName, password); });
+        [](const char* updatePath) { AsyncUpdater.setup(&server, updatePath); },
+        [](const char* userName, char* password) { AsyncUpdater.updateCredentials(userName, password); });
   
     iotWebConf.setConfigSavedCallback(&configSaved);
     iotWebConf.setWifiConnectionCallback(&wifiConnected);
 
-    iotWebConf.setFormValidator(formValidator);
     iotWebConf.getApTimeoutParameter()->visible = true;
 
     iotWebConf.setApConnectionHandler(&connectAp);
@@ -246,13 +218,39 @@ void wifiSetup() {
     convertParams();
 
     // -- Set up required URL handlers on the web server.
-    server.on("/", handleRoot);
-    server.on("/config", [] { iotWebConf.handleConfig(); });
-    server.on("/data", HTTP_GET, []() { handleData(); });
-    server.onNotFound([]() { iotWebConf.handleNotFound(); });
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) { handleRoot(request); });
+    server.on("/config", HTTP_ANY, [](AsyncWebServerRequest* request) {
+            AsyncWebRequestWrapper asyncWebRequestWrapper(request);
+            iotWebConf.handleConfig(&asyncWebRequestWrapper);
+        }
+    );
+    server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest* request) {
+            AsyncWebServerResponse* response = request->beginResponse_P(200, "image/x-icon", favicon_ico, sizeof(favicon_ico));
+            request->send(response);
+        }
+    );
+    server.on("/setruntime", HTTP_GET, [](AsyncWebServerRequest* request) { handleSetRuntime(request); });
+    server.on("/setsoc", HTTP_POST, [](AsyncWebServerRequest* request) { onSetSoc(request); });
+    server.on("/data", HTTP_GET, [](AsyncWebServerRequest* request) { handleData(request); });
+	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest* request) {
+            AsyncWebServerResponse* response = request->beginResponse(302, "text/plain", "please wait while the device is rebooting ...");
+            response->addHeader("Refresh", "15");
+            response->addHeader("Location", "/");
+            request->client()->setNoDelay(true); // Disable Nagle's algorithm so the client gets the 302 response immediately
+            request->send(response);
+		    delay(500);
+		    ESP.restart();
+		}
+	);
+
+    server.onNotFound([](AsyncWebServerRequest* request) {
+            AsyncWebRequestWrapper asyncWebRequestWrapper(request);
+            iotWebConf.handleNotFound(&asyncWebRequestWrapper);
+        }
+    );
+
+    WebSerial.begin(&server);
   
-    server.on("/setruntime", handleSetRuntime);
-    server.on("/setsoc",HTTP_POST,onSetSoc);
 }
 
 void wifiLoop() {
@@ -277,7 +275,41 @@ void wifiLoop() {
 
 }
 
-void handleData() {
+void onSetSoc(AsyncWebServerRequest* request) {
+    String soc = request->arg("soc");
+    soc.trim();
+    if (!soc.isEmpty()) {
+        float socVal = soc.toInt() / 100.00;
+        gBattery.setBatterySoc((float)socVal);
+        //Serial.printf("Set soc to %.2f",gBattery.soc());
+    }
+
+    request->send(200, "text/html", SOC_RESPONSE);
+}
+
+void handleSetRuntime(AsyncWebServerRequest* request) {
+
+    String page = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>{v}</title>";
+    page.replace("{v}", "Battery monitor");
+    page += "<style>";
+    page += ".de{background-color:#ffaaaa;} .em{font-size:0.8em;color:#bb0000;padding-bottom:0px;} .c{text-align: center;} div,input,select{padding:5px;font-size:1em;} input{width:95%;} select{width:100%} input[type=checkbox]{width:auto;scale:1.5;margin:10px;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#16A1E7;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} fieldset{border-radius:0.3rem;margin: 0px;}";
+    // page.replace("center", "left");
+    page += "</style>";
+    page += "</head><body>";
+    page += SOC_FORM;
+
+    page += "<table border=0 align=center>";
+    page += "<tr><td align=left>Go to <a href = 'config'>configure page</a> to change configuration.</td></tr>";
+    page += "<tr><td align=left>Go to <a href='/'>main page</a>.</td></tr>";
+    page += "</table>";
+    page += "</body> </html>";
+
+    page += "</body></html>\n";
+
+    request->send(200, "text/html", page);
+}
+
+void handleData(AsyncWebServerRequest* request) {
     String _json = "{";
     _json += "\"rssi\":\"" + String(WiFi.RSSI()) + "\",";
     _json += "\"voltage\":\"" + String(gBattery.voltage(), 2) + "\",";
@@ -298,8 +330,8 @@ void handleData() {
     _json += "\"capacity\":\"" + String(gCapacityAh) + "\",";
     _json += "\"chargeEfficiency\":\"" + String(gChargeEfficiencyPercent) + "\",";
     _json += "\"minSoc\":\"" + String(gMinPercent) + "\",";
-    _json += "\"tailCurrent\":\"" + String(gTailCurrentmA) + "\",";
-    _json += "\"fullVoltage\":\"" + String(gFullVoltagemV) + "\",";
+    _json += "\"tailCurrent\":\"" + String((gTailCurrentmA / 1000), 3) + "\",";
+    _json += "\"fullVoltage\":\"" + String((gFullVoltagemV / 1000), 2) + "\",";
     _json += "\"fullDelay\":\"" + String(gFullDelayS) + "\",";
     _json += "\"currentThreshold\":\"" + String(gCurrentThreshold) + "\",";
     _json += "\"shuntResistance\":\"" + String(gShuntResistancemR) + "\",";
@@ -307,7 +339,7 @@ void handleData() {
     _json += "\"voltageCalibrationFactor\":\"" + String(gVoltageCalibrationFactor) + "\",";
     _json += "\"currentCalibrationFactor\":\"" + String(gCurrentCalibrationFactor) + "\"";
     _json += "}";
-    server.send(200, "text/plain", _json);
+    request->send(200, "text/plain", _json);
 }
 
 class MyHtmlRootFormatProvider : public HtmlRootFormatProvider {
@@ -331,79 +363,82 @@ protected:
     }
 };
 
-void handleRoot() {
-    // -- Let IotWebConf test and handle captive portal requests.
-    if (iotWebConf.handleCaptivePortal()){
+void handleRoot(AsyncWebServerRequest* request) {
+    AsyncWebRequestWrapper asyncWebRequestWrapper(request);
+    if (iotWebConf.handleCaptivePortal(&asyncWebRequestWrapper)) {
         return;
     }
 
-    MyHtmlRootFormatProvider rootFormatProvider;
+    AsyncResponseStream* rs_ = request->beginResponseStream("text/html");
+    MyHtmlRootFormatProvider fp_;
 
-    String _response = "";
-    _response += rootFormatProvider.getHtmlHead(iotWebConf.getThingName());
-    _response += rootFormatProvider.getHtmlStyle();
-    _response += rootFormatProvider.getHtmlHeadEnd();
-    _response += rootFormatProvider.getHtmlScript();
+    rs_->addHeader("Server", "NMEA-BatteryMonitor");
+	rs_->print(fp_.getHtmlHead(iotWebConf.getThingName()));
+	rs_->print(fp_.getHtmlStyle());
+	rs_->print(fp_.getHtmlHeadEnd());
+	rs_->print(fp_.getHtmlScript());
+	rs_->print(fp_.getHtmlTable());
+	rs_->print(fp_.getHtmlTableRow() + fp_.getHtmlTableCol());
 
-    _response += rootFormatProvider.getHtmlTable();
-    _response += rootFormatProvider.getHtmlTableRow() + rootFormatProvider.getHtmlTableCol();
+	rs_->print(F("<fieldset align=left style=\"border: 1px solid\">\n"));
+	rs_->print(F("<table border=\"0\" align=\"center\" width=\"100%\">\n"));
+	rs_->print(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n"));
+	rs_->print(fp_.getHtmlTableEnd());
+	rs_->print(fp_.getHtmlFieldsetEnd());
 
-    _response += F("<fieldset align=left style=\"border: 1px solid\">\n");
-    _response += F("<table border=\"0\" align=\"center\" width=\"100%\">\n");
-    _response += F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n");
-    _response += rootFormatProvider.getHtmlTableEnd();
-    _response += rootFormatProvider.getHtmlFieldsetEnd();
+	rs_->print(fp_.getHtmlFieldset("Running values"));
+	rs_->print(fp_.getHtmlTable());
+	rs_->print(fp_.getHtmlTableRowSpan("Battery Voltage", "no data", "VoltageValue"));
+	rs_->print(fp_.getHtmlTableRowSpan("Shunt current", "no data", "CurrentValue"));
+	rs_->print(fp_.getHtmlTableRowSpan("Avg consumption", "no data", "AverageCurrentValue"));
+	rs_->print(fp_.getHtmlTableRowSpan("State of charge", "no data", "SocValue"));
+	rs_->print(fp_.getHtmlTableRowSpan("Time to go", "no data", "tTgValue"));
+	rs_->print(fp_.getHtmlTableRowSpan("Battery full", "no data", "isFullValue"));
+	rs_->print(fp_.getHtmlTableRowSpan("Temperature", "no data", "TemperatureValue"));
+	rs_->print(fp_.getHtmlTableEnd());
+	rs_->print(fp_.getHtmlFieldsetEnd());
 
-    _response += rootFormatProvider.getHtmlFieldset("Temperature");
-    _response += rootFormatProvider.getHtmlTable();
-	_response += rootFormatProvider.getHtmlTableRowSpan("Battery Voltage", "VoltageValue", "no data");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Shunt current", "CurrentValue", "no data");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Avg consumption", "AverageCurrentValue", "no data");
-	_response += rootFormatProvider.getHtmlTableRowSpan("State of charge", "SocValue", "no data");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Time to go", "tTgValue", "no data");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Battery full", "isFullValue", "no data");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Temperature", "TemperatureValue", "no data");
-	_response += rootFormatProvider.getHtmlTableEnd();
-	_response += rootFormatProvider.getHtmlFieldsetEnd();
+	rs_->print(fp_.getHtmlFieldset("Shunt configuration"));
+	rs_->print(fp_.getHtmlTable());
+	rs_->print(fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistancemR, 3) + "m&#8486;", "shuntResistance"));
+	rs_->print(fp_.getHtmlTableRowSpan("Shunt max current", String(gMaxCurrentA) + "A", "maxCurrent"));
+	rs_->print(fp_.getHtmlTableEnd());
+	rs_->print(fp_.getHtmlFieldsetEnd());
 
-	_response += rootFormatProvider.getHtmlFieldset("Shunt configuration");
-	_response += rootFormatProvider.getHtmlTable();
-	_response += rootFormatProvider.getHtmlTableRowSpan("Shunt resistance", "shuntResistance", String(gShuntResistancemR, 3) + "m&#8486;");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Shunt max current", "maxCurrent", String(gMaxCurrentA) + "A");
-	_response += rootFormatProvider.getHtmlTableEnd();
-	_response += rootFormatProvider.getHtmlFieldsetEnd();
+	rs_->print(fp_.getHtmlFieldset("Battery configuration"));
+	rs_->print(fp_.getHtmlTable());
+	rs_->print(fp_.getHtmlTableRowSpan("Type", String(BatTypeNames[gBatteryType]), "BatType"));
+	rs_->print(fp_.getHtmlTableRowSpan("Capacity", String(gCapacityAh) + "Ah", "battCapacity"));
+	rs_->print(fp_.getHtmlTableRowSpan("Efficiency", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency"));
+	rs_->print(fp_.getHtmlTableRowSpan("Min SOC", String(gMinPercent) + "%", "minSoc"));
+    float mA_ = gTailCurrentmA;
+    float mV_ = gFullVoltagemV;
+    rs_->print(fp_.getHtmlTableRowSpan("Tail current", String((mA_ / 1000), 3) + "A", "tailCurrent"));
+	rs_->print(fp_.getHtmlTableRowSpan("Full voltage", String((mV_ / 1000), 2) + "V", "fullVoltage"));
+	rs_->print(fp_.getHtmlTableRowSpan("Full delay", String(gFullDelayS) + "s", "fullDelay"));
+	rs_->print(fp_.getHtmlTableEnd());
+	rs_->print(fp_.getHtmlFieldsetEnd());
 
-	_response += rootFormatProvider.getHtmlFieldset("Battery configuration");
-	_response += rootFormatProvider.getHtmlTable();
-	_response += rootFormatProvider.getHtmlTableRowSpan("Type", "BatType", String(BatTypeNames[gBatteryType]));
-	_response += rootFormatProvider.getHtmlTableRowSpan("Capacity", "battCapacity", String(gCapacityAh) + "Ah");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Efficiency", "chargeEfficiency", String(gChargeEfficiencyPercent) + "%");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Min SOC", "minSoc", String(gMinPercent) + "%");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Tail current", "tailCurrent", String((gTailCurrentmA / 1000), 3) + "A");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Full voltage", "fullVoltage", String((gFullVoltagemV / 1000), 2) + "V");
-	_response += rootFormatProvider.getHtmlTableRowSpan("Full delay", "fullDelay", String(gFullDelayS) + "s");
-	_response += rootFormatProvider.getHtmlTableEnd();
-	_response += rootFormatProvider.getHtmlFieldsetEnd();
+	rs_->print(fp_.getHtmlFieldset("Network"));
+	rs_->print(fp_.getHtmlTable());
+	rs_->print(fp_.getHtmlTableRowText("MAC Address", WiFi.macAddress()));
+	rs_->print(fp_.getHtmlTableRowText("IP Address", WiFi.localIP().toString().c_str()));
+	rs_->print(fp_.getHtmlTableEnd());
+	rs_->print(fp_.getHtmlFieldsetEnd());
 
-	_response += rootFormatProvider.getHtmlFieldset("Network");
-	_response += rootFormatProvider.getHtmlTable();
-	_response += rootFormatProvider.getHtmlTableRowText("MAC Address", WiFi.macAddress());
-	_response += rootFormatProvider.getHtmlTableRowText("IP Address", WiFi.localIP().toString().c_str());
-	_response += rootFormatProvider.getHtmlTableEnd();
-	_response += rootFormatProvider.getHtmlFieldsetEnd();
+	rs_->print(fp_.addNewLine(2));
+    
+	rs_->print(fp_.getHtmlTable());
+	rs_->print(fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration."));
+	rs_->print(fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data."));
+    rs_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
+	rs_->print(fp_.getHtmlTableEnd());
 
-	_response += rootFormatProvider.addNewLine(2);
+	rs_->print(fp_.getHtmlTableColEnd() + fp_.getHtmlTableRowEnd());
+	rs_->print(fp_.getHtmlTableEnd());
+	rs_->print(fp_.getHtmlEnd());
 
-	_response += rootFormatProvider.getHtmlTable();
-	_response += rootFormatProvider.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration.");
-    _response += rootFormatProvider.getHtmlTableRowText(rootFormatProvider.getHtmlVersion(Version));
-    _response += rootFormatProvider.getHtmlTableEnd();
-
-    _response += rootFormatProvider.getHtmlTableColEnd() + rootFormatProvider.getHtmlTableRowEnd();
-    _response += rootFormatProvider.getHtmlTableEnd();
-    _response += rootFormatProvider.getHtmlEnd();
-
-	server.send(200, "text/html", _response);
+    request->send(rs_);
 }
 
 void convertParams() {
@@ -442,66 +477,6 @@ void configSaved(){
 	  startAPMode = true;
   }
 } 
-
-bool formValidator(iotwebconf::WebRequestWrapper* webRequestWrapper){ 
-  bool result = true;
-
-  int l = 0;
-
-  
-    if (server.arg(shuntResistance.getId()).toFloat() <=0)
-    {
-        shuntResistance.errorMessage = "Shunt resistance has to be > 0";
-        result = false;
-    }
-
-    l = server.arg(maxCurrent.getId()).toInt();
-    if ( l <= 0)
-    {
-        maxCurrent.errorMessage = "Maximal current must be > 0";
-        result = false;
-    }
-
-    l = server.arg(battCapacity.getId()).toInt();
-    if (l <= 0)
-    {
-        battCapacity.errorMessage = "Battery capacity must be > 0";
-        result = false;
-    }
-
-    l = server.arg(chargeEfficiency.getId()).toInt();
-    if (l <= 0  || l> 100) {
-        chargeEfficiency.errorMessage = "Charge efficiency must be between 1% and 100%";
-        result = false;
-    }
-
-
-    l = server.arg(minSoc.getId()).toInt();
-    if (l <= 0  || l> 100) {
-        minSoc.errorMessage = "Minimum SOC must be between 1% and 100%";
-        result = false;
-    }
-
-    l = server.arg(tailCurrent.getId()).toInt();
-    if (l < 0 ) {
-        tailCurrent.errorMessage = "Tail current must be > 0";
-        result = false;
-    }
-
-    l = server.arg(fullVoltage.getId()).toInt();
-    if (l < 0 ) {
-        fullVoltage.errorMessage = "Voltage when full must be > 0";
-        result = false;
-    }
-
-    l = server.arg(fullDelay.getId()).toInt();
-    if (l < 0 ) {
-        fullDelay.errorMessage = "Delay before full must be > 0";
-        result = false;
-    }
-
-  return result;
-  }
 
 bool connectAp(const char* apName, const char* password){
     if (startAPMode){
