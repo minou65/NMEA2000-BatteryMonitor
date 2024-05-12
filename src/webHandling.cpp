@@ -249,8 +249,7 @@ void wifiSetup() {
         }
     );
 
-    WebSerial.begin(&server);
-  
+    WebSerial.begin(&server, "/webserial");
 }
 
 void wifiLoop() {
@@ -369,76 +368,92 @@ void handleRoot(AsyncWebServerRequest* request) {
         return;
     }
 
-    AsyncResponseStream* rs_ = request->beginResponseStream("text/html");
+    std::string content_;
     MyHtmlRootFormatProvider fp_;
 
-    rs_->addHeader("Server", "NMEA-BatteryMonitor");
-	rs_->print(fp_.getHtmlHead(iotWebConf.getThingName()));
-	rs_->print(fp_.getHtmlStyle());
-	rs_->print(fp_.getHtmlHeadEnd());
-	rs_->print(fp_.getHtmlScript());
-	rs_->print(fp_.getHtmlTable());
-	rs_->print(fp_.getHtmlTableRow() + fp_.getHtmlTableCol());
+	content_ += fp_.getHtmlHead(iotWebConf.getThingName()).c_str();
+	content_ += fp_.getHtmlStyle().c_str();
+	content_ += fp_.getHtmlHeadEnd().c_str();
+	content_ += fp_.getHtmlScript().c_str();
+	content_ += fp_.getHtmlTable().c_str();
+    content_ += fp_.getHtmlTableRow().c_str();
+    content_ += fp_.getHtmlTableCol().c_str();
 
-	rs_->print(F("<fieldset align=left style=\"border: 1px solid\">\n"));
-	rs_->print(F("<table border=\"0\" align=\"center\" width=\"100%\">\n"));
-	rs_->print(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n"));
-	rs_->print(fp_.getHtmlTableEnd());
-	rs_->print(fp_.getHtmlFieldsetEnd());
+	content_ += String(F("<fieldset align=left style=\"border: 1px solid\">\n")).c_str();
+	content_ += String(F("<table border=\"0\" align=\"center\" width=\"100%\">\n")).c_str();
+	content_ += String(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n")).c_str();
+	content_ += fp_.getHtmlTableEnd().c_str();
+	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
-	rs_->print(fp_.getHtmlFieldset("Running values"));
-	rs_->print(fp_.getHtmlTable());
-	rs_->print(fp_.getHtmlTableRowSpan("Battery Voltage", "no data", "VoltageValue"));
-	rs_->print(fp_.getHtmlTableRowSpan("Shunt current", "no data", "CurrentValue"));
-	rs_->print(fp_.getHtmlTableRowSpan("Avg consumption", "no data", "AverageCurrentValue"));
-	rs_->print(fp_.getHtmlTableRowSpan("State of charge", "no data", "SocValue"));
-	rs_->print(fp_.getHtmlTableRowSpan("Time to go", "no data", "tTgValue"));
-	rs_->print(fp_.getHtmlTableRowSpan("Battery full", "no data", "isFullValue"));
-	rs_->print(fp_.getHtmlTableRowSpan("Temperature", "no data", "TemperatureValue"));
-	rs_->print(fp_.getHtmlTableEnd());
-	rs_->print(fp_.getHtmlFieldsetEnd());
+	content_ += fp_.getHtmlFieldset("Running values").c_str();
+	content_ += fp_.getHtmlTable().c_str();
+	content_ += fp_.getHtmlTableRowSpan("Battery Voltage", "no data", "VoltageValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt current", "no data", "CurrentValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Avg consumption", "no data", "AverageCurrentValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("State of charge", "no data", "SocValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Time to go", "no data", "tTgValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Battery full", "no data", "isFullValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Temperature", "no data", "TemperatureValue").c_str();
+	content_ += fp_.getHtmlTableEnd().c_str();
+	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
-	rs_->print(fp_.getHtmlFieldset("Shunt configuration"));
-	rs_->print(fp_.getHtmlTable());
-	rs_->print(fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistancemR, 3) + "m&#8486;", "shuntResistance"));
-	rs_->print(fp_.getHtmlTableRowSpan("Shunt max current", String(gMaxCurrentA) + "A", "maxCurrent"));
-	rs_->print(fp_.getHtmlTableEnd());
-	rs_->print(fp_.getHtmlFieldsetEnd());
+	content_ += fp_.getHtmlFieldset("Shunt configuration").c_str();
+	content_ += fp_.getHtmlTable().c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistancemR, 3) + "m&#8486;", "shuntResistance").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt max current", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
+	content_ += fp_.getHtmlTableEnd().c_str();
+	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
-	rs_->print(fp_.getHtmlFieldset("Battery configuration"));
-	rs_->print(fp_.getHtmlTable());
-	rs_->print(fp_.getHtmlTableRowSpan("Type", String(BatTypeNames[gBatteryType]), "BatType"));
-	rs_->print(fp_.getHtmlTableRowSpan("Capacity", String(gCapacityAh) + "Ah", "battCapacity"));
-	rs_->print(fp_.getHtmlTableRowSpan("Efficiency", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency"));
-	rs_->print(fp_.getHtmlTableRowSpan("Min SOC", String(gMinPercent) + "%", "minSoc"));
+	content_ += fp_.getHtmlFieldset("Battery configuration").c_str();
+	content_ += fp_.getHtmlTable().c_str();
+	content_ += fp_.getHtmlTableRowSpan("Type", String(BatTypeNames[gBatteryType]), "BatType").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Capacity", String(gCapacityAh) + "Ah", "battCapacity").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Efficiency", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Min SOC", String(gMinPercent) + "%", "minSoc").c_str();
     float mA_ = gTailCurrentmA;
     float mV_ = gFullVoltagemV;
-    rs_->print(fp_.getHtmlTableRowSpan("Tail current", String((mA_ / 1000), 3) + "A", "tailCurrent"));
-	rs_->print(fp_.getHtmlTableRowSpan("Full voltage", String((mV_ / 1000), 2) + "V", "fullVoltage"));
-	rs_->print(fp_.getHtmlTableRowSpan("Full delay", String(gFullDelayS) + "s", "fullDelay"));
-	rs_->print(fp_.getHtmlTableEnd());
-	rs_->print(fp_.getHtmlFieldsetEnd());
+    content_ += fp_.getHtmlTableRowSpan("Tail current", String((mA_ / 1000), 3) + "A", "tailCurrent").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Full voltage", String((mV_ / 1000), 2) + "V", "fullVoltage").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Full delay", String(gFullDelayS) + "s", "fullDelay").c_str();
+	content_ += fp_.getHtmlTableEnd().c_str();
+	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
-	rs_->print(fp_.getHtmlFieldset("Network"));
-	rs_->print(fp_.getHtmlTable());
-	rs_->print(fp_.getHtmlTableRowText("MAC Address", WiFi.macAddress()));
-	rs_->print(fp_.getHtmlTableRowText("IP Address", WiFi.localIP().toString().c_str()));
-	rs_->print(fp_.getHtmlTableEnd());
-	rs_->print(fp_.getHtmlFieldsetEnd());
+	content_ += fp_.getHtmlFieldset("Network").c_str();
+	content_ += fp_.getHtmlTable().c_str();
+	content_ += fp_.getHtmlTableRowText("MAC Address", WiFi.macAddress()).c_str();
+	content_ += fp_.getHtmlTableRowText("IP Address", WiFi.localIP().toString().c_str()).c_str();
+	content_ += fp_.getHtmlTableEnd().c_str();
+	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
-	rs_->print(fp_.addNewLine(2));
+	content_ += fp_.addNewLine(2).c_str();
     
-	rs_->print(fp_.getHtmlTable());
-	rs_->print(fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration."));
-	rs_->print(fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data."));
-    rs_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
-	rs_->print(fp_.getHtmlTableEnd());
+	content_ += fp_.getHtmlTable().c_str();
+	content_ += fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration.").c_str();
+	content_ += fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data.").c_str();
+    content_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)).c_str();
+	content_ += fp_.getHtmlTableEnd().c_str();
 
-	rs_->print(fp_.getHtmlTableColEnd() + fp_.getHtmlTableRowEnd());
-	rs_->print(fp_.getHtmlTableEnd());
-	rs_->print(fp_.getHtmlEnd());
+    content_ += fp_.getHtmlTableColEnd().c_str();
+    content_ += fp_.getHtmlTableRowEnd().c_str();
+	content_ += fp_.getHtmlTableEnd().c_str();
+	content_ += fp_.getHtmlEnd().c_str();
 
-    request->send(rs_);
+    AsyncWebServerResponse* response = request->beginChunkedResponse("text/html", [content_](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
+
+        std::string chunk_ = "";
+        size_t len_ = min(content_.length() - index, maxLen);
+        if (len_ > 0) {
+            chunk_ = content_.substr(index, len_);
+            chunk_.copy((char*)buffer, chunk_.length());
+        }
+        if (index + len_ <= content_.length())
+            return chunk_.length();
+        else
+            return 0;
+
+        });
+    response->addHeader("Server", "ESP Async Web Server");
+    request->send(response);
 }
 
 void convertParams() {
