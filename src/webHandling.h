@@ -10,6 +10,7 @@
 #endif
 
 #include <IotWebConf.h>
+#include <WebSerial.h>
 
 // -- Initial password to connect to the Thing, when it creates an own Access Point.
 const char wifiInitialApPassword[] = "123456789";
