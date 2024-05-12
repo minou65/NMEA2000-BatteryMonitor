@@ -18,8 +18,6 @@
 #include "IotWebConfAsyncClass.h"
 #include "IotWebConfAsyncUpdateServer.h"
 #include "IotWebRoot.h"
-#include <WebSerial.h>
-
 
 #include "common.h"
 #include "webHandling.h"
