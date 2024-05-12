@@ -77,7 +77,7 @@ The Software has been created using Visual Studio with the addon Visual Micro. I
 - NMEA200_ESP
 - [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer)
 - [IotWebConf](https://github.com/minou65/IotWebConf)
-- [IotWebConfAsync]https://github.com/minou65/IotWebConfAsync
+- [IotWebConfAsync](https://github.com/minou65/IotWebConfAsync)
 
 ## Required hardware
 
