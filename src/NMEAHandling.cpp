@@ -98,12 +98,6 @@ void SendN2kBattery(void) {
     double BatterySOC = gBattery.soc();
     byte BatterIsFull = gBattery.isFull();
 
-    if (gBattery.tTg() != INFINITY) {
-        BatteryTimeToGo = roundf(gBattery.tTg() / 60);
-    }
-	else {
-		BatteryTimeToGo = 8888;
-	}
     
     if (DCBatStatusScheduler.IsTime()) {
         DCBatStatusScheduler.UpdateNextTime();
