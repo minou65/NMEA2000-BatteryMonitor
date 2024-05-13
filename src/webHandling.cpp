@@ -17,6 +17,8 @@
 #include <IotWebConfAsyncClass.h>
 #include <IotWebConfAsyncUpdateServer.h>
 #include <IotWebRoot.h>
+#include <AsyncJson.h>
+#include <ArduinoJson.h>
 
 #include "common.h"
 #include "webHandling.h"
@@ -306,36 +308,41 @@ void handleSetRuntime(AsyncWebServerRequest* request) {
 }
 
 void handleData(AsyncWebServerRequest* request) {
-    String _json = "{";
-    _json += "\"rssi\":\"" + String(WiFi.RSSI()) + "\",";
-    _json += "\"voltage\":\"" + String(gBattery.voltage(), 2) + "\",";
-    _json += "\"current\":\"" + String(gBattery.current(), 2) + "\",";
-    _json += "\"avgCurrent\":\"" + String(gBattery.averageCurrent(), 2) + "\",";
-    _json += "\"soc\":\"" + String(gBattery.soc() * 100, 2) + "\",";
+
+    AsyncJsonResponse* response = new AsyncJsonResponse();
+    response->addHeader("Server", "ESP Async Web Server");
+    JsonVariant& json_ = response->getRoot();
+
+	json_["rssi"] = WiFi.RSSI();
+	json_["voltage"] = String(gBattery.voltage(), 2);
+	json_["current"] = String(gBattery.current(), 2);
+	json_["avgCurrent"] = String(gBattery.averageCurrent(), 2);
+	json_["soc"] = gBattery.soc() * 100;
     if (gBattery.tTg() != INFINITY) {
-        _json += "\"tTg\":\"" + String(gBattery.tTg() / 3600) + "\",";
-    }
-    else {
-		_json += "\"tTg\":\"888888\",";
+		json_["tTg"] = gBattery.tTg() / 3600;
 	}
-    _json += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
-    _json += "\"temperature\":\"" + String(gBattery.temperatur()) + "\",";
-    _json += "\"batteryType\":\"" + String(gBatteryType) + "\",";
-    _json += "\"batteryVoltage\":\"" + String(gBatteryVoltage) + "\",";
-    _json += "\"batteryChemistry\":\"" + String(gBatteryChemistry) + "\",";
-    _json += "\"capacity\":\"" + String(gCapacityAh) + "\",";
-    _json += "\"chargeEfficiency\":\"" + String(gChargeEfficiencyPercent) + "\",";
-    _json += "\"minSoc\":\"" + String(gMinPercent) + "\",";
-    _json += "\"tailCurrent\":\"" + String((gTailCurrentmA / 1000), 3) + "\",";
-    _json += "\"fullVoltage\":\"" + String((gFullVoltagemV / 1000), 2) + "\",";
-    _json += "\"fullDelay\":\"" + String(gFullDelayS) + "\",";
-    _json += "\"currentThreshold\":\"" + String(gCurrentThreshold) + "\",";
-    _json += "\"shuntResistance\":\"" + String(gShuntResistancemR) + "\",";
-    _json += "\"maxCurrent\":\"" + String(gMaxCurrentA) + "\",";
-    _json += "\"voltageCalibrationFactor\":\"" + String(gVoltageCalibrationFactor) + "\",";
-    _json += "\"currentCalibrationFactor\":\"" + String(gCurrentCalibrationFactor) + "\"";
-    _json += "}";
-    request->send(200, "text/plain", _json);
+    else {
+		json_["tTg"] = 888888;
+    }
+	json_["isFull"] = gBattery.isFull();
+	json_["temperature"] = gBattery.temperatur();
+	json_["batteryType"] = gBatteryType;
+	json_["batteryVoltage"] = gBatteryVoltage;
+	json_["batteryChemistry"] = gBatteryChemistry;
+	json_["capacity"] = gCapacityAh;
+	json_["chargeEfficiency"] = gChargeEfficiencyPercent;
+	json_["minSoc"] = gMinPercent;
+	json_["tailCurrent"] = String((gTailCurrentmA / 1000), 3);
+    json_["fullVoltage"] = String((gFullVoltagemV / 1000), 2);
+	json_["fullDelay"] = gFullDelayS;
+	json_["currentThreshold"] = String(gCurrentThreshold, 3);
+	json_["shuntResistance"] = gShuntResistancemR;
+	json_["maxCurrent"] = gMaxCurrentA;
+	json_["voltageCalibrationFactor"] = gVoltageCalibrationFactor;
+	json_["currentCalibrationFactor"] = gCurrentCalibrationFactor;
+
+    response->setLength();
+    request->send(response);
 }
 
 class MyHtmlRootFormatProvider : public HtmlRootFormatProvider {
