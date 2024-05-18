@@ -7,7 +7,7 @@
 #include "TemperaturHandling.h"
 #include "NMEAHandling.h"
 
-char Version[] = "1.1.0.2 (2024-05-09)"; // Manufacturer's Software version code
+char Version[] = "1.1.0.3 (2024-05-18)"; // Manufacturer's Software version code
 
 // # define IOTWEBCONF_DEBUG_TO_SERIAL true
 

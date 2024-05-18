@@ -12,6 +12,11 @@
 
 #endif
 
+#include "common.h"
+#include "webHandling.h"
+#include "statusHandling.h"
+#include "favicon.h"
+
 #include <DNSServer.h>
 #include <IotWebConf.h>
 #include <IotWebConfAsyncClass.h>
@@ -19,12 +24,6 @@
 #include <IotWebRoot.h>
 #include <AsyncJson.h>
 #include <ArduinoJson.h>
-
-#include "common.h"
-#include "webHandling.h"
-#include "statusHandling.h"
-#include "favicon.h"
-
 
 #include <N2kTypes.h>
 
@@ -447,7 +446,7 @@ void handleRoot(AsyncWebServerRequest* request) {
         std::string chunk_ = "";
         size_t len_ = min(content_.length() - index, maxLen);
         if (len_ > 0) {
-            chunk_ = content_.substr(index, len_);
+            chunk_ = content_.substr(index, len_ - 1);
             chunk_.copy((char*)buffer, chunk_.length());
         }
         if (index + len_ <= content_.length())
