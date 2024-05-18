@@ -255,7 +255,7 @@ void setupSensor() {
     // Check if the connection was successful, stop if not
     if (!gSensorInitialized) {
         Serial.println("Connection to sensor failed");
-        
+		return;
     }
     // Configure INA226
     ina.configure(INA226_AVERAGES_64, INA226_BUS_CONV_TIME_2116US, INA226_SHUNT_CONV_TIME_2116US, INA226_MODE_SHUNT_BUS_CONT);
@@ -277,6 +277,10 @@ void sensorInit() {
     attachInterrupt(digitalPinToInterrupt(PIN_INTERRUPT), alert, FALLING);
 
     setupSensor();
+
+	if (!gSensorInitialized) {
+		return;
+	}
 
 #ifdef DEBUG_SENSOR_Config
     // Display configuration
