@@ -61,7 +61,6 @@
 // -- Method declarations.
 void handleSetRuntime(AsyncWebServerRequest* request);
 void onSetSoc(AsyncWebServerRequest* request);
-void onProgress(size_t prg, size_t sz);
 void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
 void convertParams();
@@ -200,7 +199,7 @@ void wifiSetup() {
     iotWebConf.addSystemParameter(&APModeParam);
 
     iotWebConf.setupUpdateServer(
-        [](const char* updatePath) { AsyncUpdater.setup(&server, updatePath, onProgress); },
+        [](const char* updatePath) { AsyncUpdater.setup(&server, updatePath); },
         [](const char* userName, char* password) { AsyncUpdater.updateCredentials(userName, password); });
   
     iotWebConf.setConfigSavedCallback(&configSaved);
@@ -271,18 +270,6 @@ void wifiLoop() {
   }
 
 
-}
-
-
-void onProgress(size_t prg, size_t sz) {
-    static size_t lastPrinted = 0;
-    size_t currentPercent = (prg * 100) / sz;
-
-    if (currentPercent % 5 == 0 && currentPercent != lastPrinted) {
-        Serial.printf("Progress: %d%%\n", currentPercent);
-        WebSerial.printf("Progress: %d%%\n", currentPercent);
-        lastPrinted = currentPercent;
-    }
 }
 
 void onSetSoc(AsyncWebServerRequest* request) {
