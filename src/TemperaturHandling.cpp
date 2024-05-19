@@ -31,9 +31,9 @@ void TemperaturLoop() {
     if (gParamsChanged) {
 
     }
-    sensors.requestTemperatures(); // Send the command to get temperatures
-
+    
     if (now - lastUpdate >= UPDATE_INTERVAL) {
+        sensors.requestTemperatures(); // Send the command to get temperatures
         gBattery.setTemperatur(sensors.getTempCByIndex(0) * TemperatureCalibrationFactor);
         lastUpdate = now;
     }
