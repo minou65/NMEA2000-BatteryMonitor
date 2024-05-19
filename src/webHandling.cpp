@@ -430,6 +430,8 @@ void handleRoot(AsyncWebServerRequest* request) {
     content_ += fp_.getHtmlTableRowSpan("Tail current", String((mA_ / 1000), 3) + "A", "tailCurrent").c_str();
 	content_ += fp_.getHtmlTableRowSpan("Full voltage", String((mV_ / 1000), 2) + "V", "fullVoltage").c_str();
 	content_ += fp_.getHtmlTableRowSpan("Full delay", String(gFullDelayS) + "s", "fullDelay").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Manufacturer", String(BatteryManufacturerValue), "BattManufacturer").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Replacment date", String(BatteryReplacmentDateValue), "BattDate").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
