@@ -7,7 +7,7 @@
 #include "TemperaturHandling.h"
 #include "NMEAHandling.h"
 
-char Version[] = "1.1.0.4 (2024-05-18)"; // Manufacturer's Software version code
+char Version[] = "1.1.0.5 (2024-05-19)"; // Manufacturer's Software version code
 
 // # define IOTWEBCONF_DEBUG_TO_SERIAL true
 
@@ -31,7 +31,7 @@ void setup() {
     xTaskCreatePinnedToCore(
         loop2, /* Function to implement the task */
         "TaskHandle", /* Name of the task */
-        10000,  /* Stack size in words */
+        2000,  /* Stack size in words */
         NULL,  /* Task input parameter */
         0,  /* Priority of the task */
         &TaskHandle,  /* Task handle. */
@@ -55,6 +55,10 @@ void loop2(void* parameter) {
 
         TemperaturLoop();
         vTaskDelay(100);
+
+        //UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
+        //size_t remainingStackBytes = stackHighWaterMark * sizeof(StackType_t);
+        //Serial.print("Remaining stack space (bytes): "); Serial.println(remainingStackBytes);
 
     }
 }
