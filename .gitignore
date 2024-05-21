@@ -402,3 +402,4 @@ FodyWeavers.xsd
 *.sln.iml
 .vscode/settings.json
 /img/Thumbs.db
+src/*.bin
