@@ -8,6 +8,8 @@
 #include "common.h"
 #include "sensorHandling.h"
 #include "statusHandling.h"
+#include <WebSerial.h>
+#include <WebSerial.h>
 
 #if CONFIG_IDF_TARGET_ESP32S2
 #define PIN_SCL SCL
@@ -36,6 +38,8 @@ double sampleTime = 0;
 bool gSensorInitialized=false;
 
 static INA226 ina(Wire);
+
+extern WebSerialClass WebSerial;
 
 
 IRAM_ATTR void alert(void) { ++alertCounter; }
