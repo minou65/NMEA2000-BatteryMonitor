@@ -300,12 +300,12 @@ void updateAhCounter() {
 
     //float shuntVoltage = ina.readShuntVoltage();
     float current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
-    if (current < gCurrentThreshold) {
-        current = 0.0;
-    }
+    // if (current < gCurrentThreshold) {
+    //    current = 0.0;
+    //}
 
-    //Serial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n",current, gCurrentCalibrationFactor);
-    //Serial.printf("sampletime is: %.2d; count is: %i\n", sampleTime, count);
+    WebSerial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n",current, gCurrentCalibrationFactor);
+    WebSerial.printf("sampletime is: %.2d; count is: %i\n", sampleTime, count);
     gBattery.updateConsumption(current, sampleTime, count);
     if(count > 1) {
         Serial.printf("Overflow %d\n",count);
@@ -347,6 +347,13 @@ void sensorLoop() {
         lastUpdate = now;
     }
 
+	WebSerial.printf("Bus voltage:   %f.3V", ina.readBusVoltage());
+	WebSerial.printf("Bus power:     %f.3W", ina.readBusPower());
+	WebSerial.printf("Shunt voltage: %f.3V", ina.readShuntVoltage());
+	WebSerial.printf("Shunt current: %f.3A", ina.readShuntCurrent());
+	
+	
+		
 #ifdef DEBUG_SENSOR
     Serial.print("Bus voltage:   ") ;
     Serial.print(ina.readBusVoltage(), 7);
