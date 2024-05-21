@@ -321,7 +321,7 @@ void sensorLoop() {
     }
 
     if(gParamsChanged) {
-        Serial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
+        WebSerial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
         ina.calibrate(gShuntResistancemR, gMaxCurrentA);    
         gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
     }
@@ -347,10 +347,10 @@ void sensorLoop() {
         lastUpdate = now;
     }
 
-	WebSerial.printf("Bus voltage:   %f.3V", ina.readBusVoltage());
-	WebSerial.printf("Bus power:     %f.3W", ina.readBusPower());
-	WebSerial.printf("Shunt voltage: %f.3V", ina.readShuntVoltage());
-	WebSerial.printf("Shunt current: %f.3A", ina.readShuntCurrent());
+	WebSerial.printf("Bus voltage:   %.3fV", ina.readBusVoltage());
+	WebSerial.printf("Bus power:     %.3fW", ina.readBusPower());
+	WebSerial.printf("Shunt voltage: %.3fV", ina.readShuntVoltage());
+	WebSerial.printf("Shunt current: %.3fA", ina.readShuntCurrent());
 	
 	
 		
