@@ -406,3 +406,5 @@ FodyWeavers.xsd
 src/*.bin
 =======
 >>>>>>> 3bdfd4878abd1023bd62f2882f8212403dc01d9f
+src/NMEA2000-BatteryMonitor.ino.nodemcu-32s.bin
+/src/NMEA2000-BatteryMonitor.ino.nodemcu-32s.bin
