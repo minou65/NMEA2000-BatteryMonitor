@@ -296,17 +296,13 @@ void sensorInit() {
 void updateAhCounter() {
     int count;
     noInterrupts();
-    // If we missed an interrupt, we assume we had thew same value
-    // alle the time.
+    // If we missed an interrupt, we assume we had the same value all the time.
     count = alertCounter;
     alertCounter = 0;
     interrupts();
 
     //float shuntVoltage = ina.readShuntVoltage();
     float current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
-    // if (current < gCurrentThreshold) {
-    //    current = 0.0;
-    //}
 
     WebSerial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n",current, gCurrentCalibrationFactor);
     WebSerial.printf("sampletime is: %.2d; count is: %i\n", sampleTime, count);
@@ -338,7 +334,6 @@ void sensorLoop() {
 #endif // DEBUG_SENSOR_Config
 
         updateAhCounter();
-       //  gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
     }
 
     gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
@@ -351,30 +346,15 @@ void sensorLoop() {
         lastUpdate = now;
     }
 
-	WebSerial.printf("Bus voltage:   %.3fV", ina.readBusVoltage());
-	WebSerial.printf("Bus power:     %.3fW", ina.readBusPower());
-	WebSerial.printf("Shunt voltage: %.3fV", ina.readShuntVoltage());
-	WebSerial.printf("Shunt current: %.3fA", ina.readShuntCurrent());
-	
-	
+	WebSerial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
+	WebSerial.printf("Bus power:     %.3fW\n", ina.readBusPower());
+	WebSerial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
+	WebSerial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
 		
 #ifdef DEBUG_SENSOR
-    Serial.print("Bus voltage:   ") ;
-    Serial.print(ina.readBusVoltage(), 7);
-    Serial.println(" V");
-
-    Serial.print("Bus power:     ");
-    Serial.print(ina.readBusPower(), 7);
-    Serial.println(" W");
-
-    Serial.print("Shunt voltage: ");
-    Serial.print(ina.readShuntVoltage(), 7);
-    Serial.println(" V");
-
-    Serial.print("Shunt current: ");
-    Serial.print(ina.readShuntCurrent(), 7);
-    Serial.println(" A");
-
-    Serial.println("");
+    Serial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
+    Serial.printf("Bus power:     %.3fW\n", ina.readBusPower());
+    Serial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
+    Serial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
 #endif // DEBUG_SENSOR
 }
