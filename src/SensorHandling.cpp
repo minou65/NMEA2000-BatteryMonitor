@@ -317,6 +317,10 @@ void sensorLoop() {
     unsigned long now = millis();
 
     if(!gSensorInitialized) {
+		if (now - lastUpdate >= UPDATE_INTERVAL) {
+            WebSerial.println("Sensor not initialized");
+			lastUpdate = now;
+		}
         return;
     }
 
@@ -339,22 +343,22 @@ void sensorLoop() {
     gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
         
     if (now - lastUpdate >= UPDATE_INTERVAL) {
-        gBattery.checkFull();        
-        gBattery.updateSOC();        
+        gBattery.checkFull();
+        gBattery.updateSOC();
         gBattery.updateTtG();
         gBattery.updateStats(now);
         lastUpdate = now;
-    }
 
-	WebSerial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
-	WebSerial.printf("Bus power:     %.3fW\n", ina.readBusPower());
-	WebSerial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
-	WebSerial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
-		
+        WebSerial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
+        WebSerial.printf("Bus power:     %.3fW\n", ina.readBusPower());
+        WebSerial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
+        WebSerial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
+
 #ifdef DEBUG_SENSOR
-    Serial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
-    Serial.printf("Bus power:     %.3fW\n", ina.readBusPower());
-    Serial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
-    Serial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
+        Serial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
+        Serial.printf("Bus power:     %.3fW\n", ina.readBusPower());
+        Serial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
+        Serial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
 #endif // DEBUG_SENSOR
+    }
 }

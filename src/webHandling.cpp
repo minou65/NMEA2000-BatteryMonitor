@@ -445,8 +445,10 @@ void handleRoot(AsyncWebServerRequest* request) {
 	content_ += fp_.addNewLine(2).c_str();
     
 	content_ += fp_.getHtmlTable().c_str();
+    content_ += fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data.").c_str();
 	content_ += fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration.").c_str();
-	content_ += fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data.").c_str();
+    content_ += fp_.getHtmlTableRowText("Go to <a href = 'webserial'>sensor monitoring</a> page.").c_str();
+	
     content_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)).c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 
