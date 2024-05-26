@@ -5376,6 +5376,7 @@ Es handelt sich hierbei um AK500 in horizontaler Ausführung.&lt;p&gt;
 <part name="R2" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-EU_" device="0309/12" package3d_urn="urn:adsk.eagle:package:23571/1" value="Shunt"/>
 <part name="D1" library="diode" library_urn="urn:adsk.eagle:library:210" deviceset="1N4004" device="" package3d_urn="urn:adsk.eagle:package:43336/1" value="1N4001"/>
 <part name="X1" library="con-ptr500" library_urn="urn:adsk.eagle:library:181" deviceset="AK500/5" device="" package3d_urn="urn:adsk.eagle:package:9890/1"/>
+<part name="X2" library="con-ptr500" library_urn="urn:adsk.eagle:library:181" deviceset="AK500/5" device="" package3d_urn="urn:adsk.eagle:package:9890/1"/>
 </parts>
 <sheets>
 <sheet>
@@ -5385,6 +5386,8 @@ CANH = weiss</text>
 <text x="2.54" y="147.32" size="1.778" layer="97">Battery -</text>
 <text x="2.54" y="132.08" size="1.778" layer="97">To Load</text>
 <text x="2.54" y="160.02" size="1.778" layer="97">Battery +</text>
+<text x="165.1" y="33.02" size="1.778" layer="97">Supply voltage for ESP32 from NEMA Bus</text>
+<text x="255.016" y="5.842" size="5.08" layer="97">A</text>
 </plain>
 <instances>
 <instance part="ESP1" gate="G$1" x="180.34" y="114.3" smashed="yes">
@@ -5440,12 +5443,17 @@ CANH = weiss</text>
 <instance part="X1" gate="-3" x="20.32" y="129.54" smashed="yes">
 <attribute name="NAME" x="19.05" y="130.429" size="1.778" layer="95" rot="R180"/>
 </instance>
-<instance part="X1" gate="-4" x="27.94" y="53.34" smashed="yes">
+<instance part="X2" gate="-1" x="25.4" y="93.98" smashed="yes">
+<attribute name="NAME" x="24.13" y="94.869" size="1.778" layer="95" rot="R180"/>
+</instance>
+<instance part="X2" gate="-2" x="25.4" y="76.2" smashed="yes">
+<attribute name="NAME" x="24.13" y="77.089" size="1.778" layer="95" rot="R180"/>
+</instance>
+<instance part="X2" gate="-3" x="27.94" y="53.34" smashed="yes">
 <attribute name="NAME" x="26.67" y="54.229" size="1.778" layer="95" rot="R180"/>
 </instance>
-<instance part="X1" gate="-5" x="27.94" y="48.26" smashed="yes">
+<instance part="X2" gate="-4" x="27.94" y="48.26" smashed="yes">
 <attribute name="NAME" x="26.67" y="49.149" size="1.778" layer="95" rot="R180"/>
-<attribute name="VALUE" x="24.13" y="44.577" size="1.778" layer="96"/>
 </instance>
 </instances>
 <busses>
@@ -5497,8 +5505,9 @@ CANH = weiss</text>
 <wire x1="68.58" y1="48.26" x2="60.96" y2="48.26" width="0.1524" layer="91"/>
 <wire x1="60.96" y1="76.2" x2="60.96" y2="48.26" width="0.1524" layer="91"/>
 <junction x="60.96" y="76.2"/>
-<wire x1="144.78" y1="76.2" x2="144.78" y2="152.4" width="0.1524" layer="91"/>
+<wire x1="144.78" y1="76.2" x2="144.78" y2="144.78" width="0.1524" layer="91"/>
 <pinref part="X3" gate="-3" pin="S"/>
+<wire x1="144.78" y1="144.78" x2="144.78" y2="152.4" width="0.1524" layer="91"/>
 <wire x1="233.68" y1="139.7" x2="233.68" y2="152.4" width="0.1524" layer="91"/>
 <wire x1="233.68" y1="152.4" x2="233.68" y2="160.02" width="0.1524" layer="91"/>
 <wire x1="144.78" y1="152.4" x2="233.68" y2="152.4" width="0.1524" layer="91"/>
@@ -5507,32 +5516,19 @@ CANH = weiss</text>
 <wire x1="205.74" y1="139.7" x2="233.68" y2="139.7" width="0.1524" layer="91"/>
 <pinref part="IC2" gate="G$1" pin="GND"/>
 <wire x1="83.82" y1="149.86" x2="83.82" y2="144.78" width="0.1524" layer="91"/>
-<pinref part="IC2" gate="G$1" pin="IN+"/>
-<wire x1="68.58" y1="149.86" x2="68.58" y2="144.78" width="0.1524" layer="91"/>
-<wire x1="68.58" y1="144.78" x2="60.96" y2="144.78" width="0.1524" layer="91"/>
-<wire x1="60.96" y1="144.78" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
-<wire x1="30.48" y1="144.78" x2="25.4" y2="144.78" width="0.1524" layer="91"/>
-<wire x1="83.82" y1="144.78" x2="68.58" y2="144.78" width="0.1524" layer="91"/>
-<junction x="68.58" y="144.78"/>
-<wire x1="60.96" y1="76.2" x2="60.96" y2="144.78" width="0.1524" layer="91"/>
-<junction x="60.96" y="144.78"/>
-<pinref part="R2" gate="G$1" pin="2"/>
-<wire x1="30.48" y1="142.24" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
-<junction x="30.48" y="144.78"/>
-<pinref part="X1" gate="-2" pin="KL"/>
+<wire x1="83.82" y1="144.78" x2="144.78" y2="144.78" width="0.1524" layer="91"/>
+<junction x="144.78" y="144.78"/>
+<pinref part="X2" gate="-2" pin="KL"/>
+<wire x1="30.48" y1="76.2" x2="60.96" y2="76.2" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="12V" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="VBS"/>
-<wire x1="73.66" y1="149.86" x2="73.66" y2="111.76" width="0.1524" layer="91"/>
-<wire x1="73.66" y1="111.76" x2="40.64" y2="111.76" width="0.1524" layer="91"/>
-<pinref part="D1" gate="1" pin="A"/>
-<wire x1="43.18" y1="93.98" x2="40.64" y2="93.98" width="0.1524" layer="91"/>
-<wire x1="40.64" y1="93.98" x2="40.64" y2="111.76" width="0.1524" layer="91"/>
-<junction x="40.64" y="111.76"/>
+<wire x1="73.66" y1="149.86" x2="73.66" y2="142.24" width="0.1524" layer="91"/>
+<wire x1="73.66" y1="142.24" x2="40.64" y2="142.24" width="0.1524" layer="91"/>
 <pinref part="X1" gate="-1" pin="KL"/>
-<wire x1="40.64" y1="111.76" x2="40.64" y2="157.48" width="0.1524" layer="91"/>
+<wire x1="40.64" y1="142.24" x2="40.64" y2="157.48" width="0.1524" layer="91"/>
 <wire x1="40.64" y1="157.48" x2="22.86" y2="157.48" width="0.1524" layer="91"/>
 </segment>
 </net>
@@ -5541,7 +5537,7 @@ CANH = weiss</text>
 <pinref part="IC3" gate="G$1" pin="CANL"/>
 <wire x1="68.58" y1="53.34" x2="33.02" y2="53.34" width="0.1524" layer="91"/>
 <label x="35.56" y="53.34" size="1.778" layer="95"/>
-<pinref part="X1" gate="-4" pin="KL"/>
+<pinref part="X2" gate="-3" pin="KL"/>
 </segment>
 </net>
 <net name="CANH" class="0">
@@ -5551,7 +5547,7 @@ CANH = weiss</text>
 <label x="35.56" y="48.26" size="1.778" layer="95"/>
 <wire x1="50.8" y1="48.26" x2="50.8" y2="50.8" width="0.1524" layer="91"/>
 <wire x1="33.02" y1="48.26" x2="50.8" y2="48.26" width="0.1524" layer="91"/>
-<pinref part="X1" gate="-5" pin="KL"/>
+<pinref part="X2" gate="-4" pin="KL"/>
 </segment>
 </net>
 <net name="N$6" class="0">
@@ -5644,6 +5640,25 @@ CANH = weiss</text>
 <pinref part="IC1" gate="1" pin="IN"/>
 <wire x1="71.12" y1="93.98" x2="48.26" y2="93.98" width="0.1524" layer="91"/>
 <pinref part="D1" gate="1" pin="C"/>
+</segment>
+</net>
+<net name="N$5" class="0">
+<segment>
+<pinref part="X2" gate="-1" pin="KL"/>
+<pinref part="D1" gate="1" pin="A"/>
+<wire x1="30.48" y1="93.98" x2="43.18" y2="93.98" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="N$9" class="0">
+<segment>
+<pinref part="IC2" gate="G$1" pin="IN+"/>
+<wire x1="68.58" y1="149.86" x2="68.58" y2="144.78" width="0.1524" layer="91"/>
+<wire x1="68.58" y1="144.78" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
+<pinref part="R2" gate="G$1" pin="2"/>
+<wire x1="30.48" y1="142.24" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
+<junction x="30.48" y="144.78"/>
+<wire x1="30.48" y1="144.78" x2="25.4" y2="144.78" width="0.1524" layer="91"/>
+<pinref part="X1" gate="-2" pin="KL"/>
 </segment>
 </net>
 </nets>
