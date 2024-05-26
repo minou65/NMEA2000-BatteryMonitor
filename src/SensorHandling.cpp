@@ -1,15 +1,16 @@
 
 #include <Arduino.h>
-
 #include <Wire.h>
+#include <WebSerial.h>
 
 #include "INA226.h"
-
+#include "INA226EnumToString.h"
 #include "common.h"
 #include "sensorHandling.h"
 #include "statusHandling.h"
-#include <WebSerial.h>
-#include <WebSerial.h>
+#include "neotimer.h"
+
+
 
 #if CONFIG_IDF_TARGET_ESP32S2
 #define PIN_SCL SCL
@@ -35,12 +36,11 @@ float gCurrentCalibrationFactor = 1.0;
 
 volatile uint16_t alertCounter = 0;
 double sampleTime = 0;
-bool gSensorInitialized=false;
+bool gSensorInitialized = false;
+bool updateSensorConfig = true;
 
 static INA226 ina(Wire);
-
-extern WebSerialClass WebSerial;
-
+Neotimer statisticsTimer = Neotimer(1000);
 
 IRAM_ATTR void alert(void) { ++alertCounter; }
 
@@ -111,150 +111,25 @@ uint16_t translateSampleCount(ina226_averages_t value) {
   return result;
 }
 
-#ifdef DEBUG_SENSOR_Config
 void checkConfig() {
-    Serial.print("Mode:                  ");
-    switch (ina.getMode()) {
-        case INA226_MODE_POWER_DOWN:
-        Serial.println("Power-Down");
-        break;
-        case INA226_MODE_SHUNT_TRIG:
-        Serial.println("Shunt Voltage, Triggered");
-        break;
-        case INA226_MODE_BUS_TRIG:
-        Serial.println("Bus Voltage, Triggered");
-        break;
-        case INA226_MODE_SHUNT_BUS_TRIG:
-        Serial.println("Shunt and Bus, Triggered");
-        break;
-        case INA226_MODE_ADC_OFF:
-        Serial.println("ADC Off");
-        break;
-        case INA226_MODE_SHUNT_CONT:
-        Serial.println("Shunt Voltage, Continuous");
-        break;
-        case INA226_MODE_BUS_CONT:
-        Serial.println("Bus Voltage, Continuous");
-        break;
-        case INA226_MODE_SHUNT_BUS_CONT:
-        Serial.println("Shunt and Bus, Continuous");
-        break;
-        default:
-        Serial.println("unknown");
-    }
-
-    Serial.print("Samples average:       ");
-    switch (ina.getAverages()) {
-        case INA226_AVERAGES_1:
-        Serial.println("1 sample");
-        break;
-        case INA226_AVERAGES_4:
-        Serial.println("4 samples");
-        break;
-        case INA226_AVERAGES_16:
-        Serial.println("16 samples");
-        break;
-        case INA226_AVERAGES_64:
-        Serial.println("64 samples");
-        break;
-        case INA226_AVERAGES_128:
-        Serial.println("128 samples");
-        break;
-        case INA226_AVERAGES_256:
-        Serial.println("256 samples");
-        break;
-        case INA226_AVERAGES_512:
-        Serial.println("512 samples");
-        break;
-        case INA226_AVERAGES_1024:
-        Serial.println("1024 samples");
-        break;
-        default:
-        Serial.println("unknown");
-    }
-
-    Serial.print("Bus conversion time:   ");
-    switch (ina.getBusConversionTime()) {
-        case INA226_BUS_CONV_TIME_140US:
-        Serial.println("140uS");
-        break;
-        case INA226_BUS_CONV_TIME_204US:
-        Serial.println("204uS");
-        break;
-        case INA226_BUS_CONV_TIME_332US:
-        Serial.println("332uS");
-        break;
-        case INA226_BUS_CONV_TIME_588US:
-        Serial.println("558uS");
-        break;
-        case INA226_BUS_CONV_TIME_1100US:
-        Serial.println("1.100ms");
-        break;
-        case INA226_BUS_CONV_TIME_2116US:
-        Serial.println("2.116ms");
-        break;
-        case INA226_BUS_CONV_TIME_4156US:
-        Serial.println("4.156ms");
-        break;
-        case INA226_BUS_CONV_TIME_8244US:
-        Serial.println("8.244ms");
-        break;
-        default:
-        Serial.println("unknown");
-    }
-
-    Serial.print("Shunt conversion time: ");
-    switch (ina.getShuntConversionTime()) {
-        case INA226_SHUNT_CONV_TIME_140US:
-        Serial.println("140uS");
-        break;
-        case INA226_SHUNT_CONV_TIME_204US:
-        Serial.println("204uS");
-        break;
-        case INA226_SHUNT_CONV_TIME_332US:
-        Serial.println("332uS");
-        break;
-        case INA226_SHUNT_CONV_TIME_588US:
-        Serial.println("558uS");
-        break;
-        case INA226_SHUNT_CONV_TIME_1100US:
-        Serial.println("1.100ms");
-        break;
-        case INA226_SHUNT_CONV_TIME_2116US:
-        Serial.println("2.116ms");
-        break;
-        case INA226_SHUNT_CONV_TIME_4156US:
-        Serial.println("4.156ms");
-        break;
-        case INA226_SHUNT_CONV_TIME_8244US:
-        Serial.println("8.244ms");
-        break;
-        default:
-        Serial.println("unknown");
-    }
-
-    Serial.print("Max possible current:  ");
-    Serial.print(ina.getMaxPossibleCurrent());
-    Serial.println(" A");
-
-    Serial.print("Max current:           ");
-    Serial.print(ina.getMaxCurrent());
-    Serial.println(" A");
-
-    Serial.print("Max shunt voltage:     ");
-    Serial.print(ina.getMaxShuntVoltage());
-    Serial.println(" V");
-
-    Serial.print("Max power:             ");
-    Serial.print(ina.getMaxPower());
-    Serial.println(" W");
+	Serial.printf("Configuration of INA226\n");
+	Serial.printf("    Mode:                  %s\n", INA226EnumTypeToStr(ina.getMode()));
+	Serial.printf("    Samples average:       %s\n", INA226EnumTypeToStr(ina.getAverages()));
+	Serial.printf("    Bus conversion time:   %s\n", INA226EnumTypeToStr((ina226_busConvTime_t)ina.getBusConversionTime()));
+	Serial.printf("    Shunt conversion time: %s\n", INA226EnumTypeToStr(ina.getShuntConversionTime()));
+	Serial.printf("    Max possible current:  %.3f A\n", ina.getMaxPossibleCurrent());
+	Serial.printf("    Max current:           %.3f A\n", ina.getMaxCurrent());
+	Serial.printf("    Max shunt voltage:     %.3f V\n", ina.getMaxShuntVoltage());
+	Serial.printf("    Max power:             %.3f W\n", ina.getMaxPower());
+    Serial.printf("    Shunt resistance:      %.3f mR\n", gShuntResistancemR);
+    Serial.printf("    Shunt max current:     %i A\n", gMaxCurrentA);
 
 }
-#endif
 
 void setupSensor() {
     // Default INA226 address is 0x40
     gSensorInitialized = ina.begin();
+	statisticsTimer.start();
 
     // Check if the connection was successful, stop if not
     if (!gSensorInitialized) {
@@ -263,9 +138,10 @@ void setupSensor() {
     }
     // Configure INA226
     ina.configure(INA226_AVERAGES_64, INA226_BUS_CONV_TIME_2116US, INA226_SHUNT_CONV_TIME_2116US, INA226_MODE_SHUNT_BUS_CONT);
+    ina.calibrate(gShuntResistancemR / 1000, gMaxCurrentA);
+    ina.enableConversionReadyAlert();
 
     Serial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
-    ina.calibrate(gShuntResistancemR, gMaxCurrentA);
     gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 
     uint16_t conversionTimeShunt = translateConversionTime(ina.getShuntConversionTime());
@@ -285,69 +161,64 @@ void sensorInit() {
 	if (!gSensorInitialized) {
 		return;
 	}
-
-#ifdef DEBUG_SENSOR_Config
-    // Display configuration
-    checkConfig();
-#endif
-
 }
 
 void updateAhCounter() {
-    int count;
+    int _count;
     noInterrupts();
     // If we missed an interrupt, we assume we had the same value all the time.
-    count = alertCounter;
+    _count = alertCounter;
     alertCounter = 0;
     interrupts();
 
-    //float shuntVoltage = ina.readShuntVoltage();
-    float current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
+    //float _shuntVoltage = ina.readShuntVoltage();
+    float _current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
+    gBattery.updateConsumption(_current, sampleTime, _count);
 
-    WebSerial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n",current, gCurrentCalibrationFactor);
-    WebSerial.printf("sampletime is: %.2d; count is: %i\n", sampleTime, count);
-    gBattery.updateConsumption(current, sampleTime, count);
-    if(count > 1) {
-        Serial.printf("Overflow %d\n",count);
+#ifdef DEBUG_SENSOR
+    Serial.println(F("Update Ah counter"));
+
+    WebSerial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n", _current, gCurrentCalibrationFactor);
+    WebSerial.printf("sampletime is: %.2d; count is: %i\n", sampleTime, _count);
+    if(_count > 1) {
+        Serial.printf("Overflow %d\n", _count);
+		WebSerial.printf("Overflow %d\n", _count);
     } 
+#endif // DEBUG_SENSOR
+
 }
 
 void sensorLoop() {
-    static unsigned long lastUpdate = 0;
-    unsigned long now = millis();
+    unsigned long _now = millis();
 
     if(!gSensorInitialized) {
-		if (now - lastUpdate >= UPDATE_INTERVAL) {
-            WebSerial.println("Sensor not initialized");
-			lastUpdate = now;
+		if (statisticsTimer.repeat()) {
+			WebSerial.println("Sensor not initialized");
+            Serial.println("Sensor not initialized");
 		}
         return;
     }
 
-    if(gParamsChanged) {
+    if(updateSensorConfig) {
+
         WebSerial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
-        ina.calibrate(gShuntResistancemR, gMaxCurrentA);    
+        ina.calibrate(gShuntResistancemR / 1000, gMaxCurrentA);    
         gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
+
+        checkConfig();
+        updateSensorConfig = false;
     }
 
     while (alertCounter && ina.isConversionReady()) { 
-
-#ifdef DEBUG_SENSOR
-
-        Serial.println(F("Update Ah counter"));
-#endif // DEBUG_SENSOR_Config
-
         updateAhCounter();
     }
 
-    gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
-        
-    if (now - lastUpdate >= UPDATE_INTERVAL) {
+	if (statisticsTimer.repeat()) {
+        gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
         gBattery.checkFull();
         gBattery.updateSOC();
         gBattery.updateTtG();
-        gBattery.updateStats(now);
-        lastUpdate = now;
+        gBattery.updateStats(_now);
 
         WebSerial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
         WebSerial.printf("Bus power:     %.3fW\n", ina.readBusPower());
@@ -360,5 +231,5 @@ void sensorLoop() {
         Serial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
         Serial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
 #endif // DEBUG_SENSOR
-    }
+	}
 }
