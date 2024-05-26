@@ -108,7 +108,7 @@ char CurrentCalibrationFactorValue[NUMBER_LEN];
 char shuntResistanceValue[NUMBER_LEN];
 
 iotwebconf::ParameterGroup ShuntGroup = iotwebconf::ParameterGroup("ShuntGroup","Shunt");
-iotwebconf::NumberParameter shuntResistance = iotwebconf::NumberParameter("Shunt resistance [m&#8486;]", "shuntR", shuntResistanceValue, NUMBER_LEN, "0.750", "0..100", "min='0.001' max='100' step='0.001'");
+iotwebconf::NumberParameter shuntResistance = iotwebconf::NumberParameter("Shunt resistance [&#8486;]", "shuntR", shuntResistanceValue, NUMBER_LEN, "0.750", "0..100", "min='0.001' max='100' step='0.001'");
 iotwebconf::NumberParameter maxCurrent = iotwebconf::NumberParameter("Expected max current [A]", "maxA", maxCurrentValue, NUMBER_LEN, "200", "1..500", "min='1' max='500' step='1'");
 iotwebconf::NumberParameter VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", "VoltageCalibrationFactor", VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
 iotwebconf::NumberParameter CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", "CurrentCalibrationFactor", CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
@@ -328,15 +328,18 @@ void handleData(AsyncWebServerRequest* request) {
 	json_["voltage"] = String(gBattery.voltage(), 2);
 	json_["current"] = String(gBattery.current(), 2);
 	json_["avgCurrent"] = String(gBattery.averageCurrent(), 2);
-	json_["soc"] = gBattery.soc() * 100;
+	json_["soc"] = String(gBattery.soc() * 100, 1);
     if (gBattery.tTg() != INFINITY) {
-		json_["tTg"] = gBattery.tTg() / 3600;
+        int _hours = gBattery.tTg() / 3600;
+        std::string _minutes = std::to_string((gBattery.tTg() % 3600) / 60);
+        _minutes.insert(0, 2 - _minutes.length(), '0');
+		json_["tTg"] = String(_hours) + ":" + _minutes.c_str();
 	}
     else {
-		json_["tTg"] = 888888;
+		json_["tTg"] = "888888";
     }
 	json_["isFull"] = gBattery.isFull();
-	json_["temperature"] = gBattery.temperatur();
+	json_["temperature"] = String(gBattery.temperatur(), 2);
 	json_["batteryType"] = gBatteryType;
 	json_["batteryVoltage"] = gBatteryVoltage;
 	json_["batteryChemistry"] = gBatteryChemistry;
@@ -414,7 +417,7 @@ void handleRoot(AsyncWebServerRequest* request) {
 
 	content_ += fp_.getHtmlFieldset("Shunt configuration").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistancemR, 3) + "m&#8486;", "shuntResistance").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistancemR, 3) + "&#8486;", "shuntResistance").c_str();
 	content_ += fp_.getHtmlTableRowSpan("Shunt max current", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
@@ -505,11 +508,13 @@ void convertParams() {
 void configSaved(){ 
   convertParams();
   gParamsChanged = true;
+  
 
   if (!APModeParam.isChecked()) {
 	  Serial.println(F("start allways AP mode"));
 	  startAPMode = true;
   }
+  Serial.println(F("Parameters are saved"));
 } 
 
 bool connectAp(const char* apName, const char* password){
