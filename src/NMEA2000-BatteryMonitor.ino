@@ -41,20 +41,22 @@ void setup() {
 
 void loop() {
     if (gParamsChanged) {
+        updateSensorConfig = true;
 
+        gParamsChanged = false;
     }
     wifiLoop();
     sensorLoop();
     N2Kloop();
 
-    gParamsChanged = false;
+   // gParamsChanged = false;
 }
 
 void loop2(void* parameter) {
     for (;;) {   // Endless loop
 
         TemperaturLoop();
-        vTaskDelay(100);
+        vTaskDelay(500);
 
         //UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
         //size_t remainingStackBytes = stackHighWaterMark * sizeof(StackType_t);
