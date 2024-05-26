@@ -41,7 +41,7 @@ void BatteryStatus::updateSOC() {
 void BatteryStatus::updateTtG() {
     float avgCurrent = getAverageConsumption();
     if (avgCurrent > 0.0) {
-        stats.tTgVal = max(stats.remainAs - minAs, 0.0f) / avgCurrent;
+        stats.tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / avgCurrent);
     }  else {
         stats.tTgVal = INFINITY;
     }

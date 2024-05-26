@@ -16,7 +16,7 @@ struct Statistics {
     // The following values are the main values we want
     float socVal;
     float remainAs;
-    float tTgVal;
+    unsigned int tTgVal;  // Time to go in seconds
     // Here the statistics start
     float consumedAs;
     unsigned int deepestDischarge;
@@ -55,7 +55,7 @@ public:
     void updateStats(unsigned long now);
 
     //Getters
-    float tTg() {
+    unsigned int tTg() {
         return stats.tTgVal;
     }
     float soc() {
