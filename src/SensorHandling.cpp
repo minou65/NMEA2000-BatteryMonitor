@@ -121,7 +121,7 @@ void checkConfig() {
 	Serial.printf("    Max current:           %.3f A\n", ina.getMaxCurrent());
 	Serial.printf("    Max shunt voltage:     %.3f V\n", ina.getMaxShuntVoltage());
 	Serial.printf("    Max power:             %.3f W\n", ina.getMaxPower());
-    Serial.printf("    Shunt resistance:      %.3f mR\n", gShuntResistancemR);
+    Serial.printf("    Shunt resistance:      %.3f R\n", gShuntResistanceR);
     Serial.printf("    Shunt max current:     %i A\n", gMaxCurrentA);
 
 }
@@ -138,10 +138,10 @@ void setupSensor() {
     }
     // Configure INA226
     ina.configure(INA226_AVERAGES_64, INA226_BUS_CONV_TIME_2116US, INA226_SHUNT_CONV_TIME_2116US, INA226_MODE_SHUNT_BUS_CONT);
-    ina.calibrate(gShuntResistancemR / 1000, gMaxCurrentA);
+    ina.calibrate(gShuntResistanceR / 1000, gMaxCurrentA);
     ina.enableConversionReadyAlert();
 
-    Serial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
+    Serial.printf("calibrate sensor: Shunt resitance = %.3fR, max currenct = %iA\n", gShuntResistanceR, gMaxCurrentA);
     gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 
     uint16_t conversionTimeShunt = translateConversionTime(ina.getShuntConversionTime());
@@ -201,8 +201,8 @@ void sensorLoop() {
 
     if(updateSensorConfig) {
 
-        WebSerial.printf("calibrate sensor: Shunt resitance = %.3fmR, max currenct = %iA\n", gShuntResistancemR, gMaxCurrentA);
-        ina.calibrate(gShuntResistancemR / 1000, gMaxCurrentA);    
+        WebSerial.printf("calibrate sensor: Shunt resitance = %.3fR, max currenct = %iA\n", gShuntResistanceR, gMaxCurrentA);
+        ina.calibrate(gShuntResistanceR / 1000, gMaxCurrentA);    
         gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 
         checkConfig();

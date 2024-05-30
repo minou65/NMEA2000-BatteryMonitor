@@ -34,7 +34,7 @@ extern uint16_t gMinPercent;
 extern uint16_t gTailCurrentmA;
 extern uint16_t gFullVoltagemV;
 extern uint16_t gFullDelayS;
-extern float gShuntResistancemR;
+extern float gShuntResistanceR;
 extern uint16_t gMaxCurrentA;
 extern bool gSensorInitialized;
 

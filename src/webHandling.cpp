@@ -87,7 +87,7 @@ uint16_t gTailCurrentmA;
 uint16_t gFullVoltagemV;
 uint16_t gFullDelayS;
 float gCurrentThreshold;
-float gShuntResistancemR;
+float gShuntResistanceR;
 uint16_t gMaxCurrentA;
 char gCustomName[64] = "NMEA-Batterymonitor";
 tN2kBatType gBatteryType = N2kDCbt_AGM;
@@ -350,7 +350,7 @@ void handleData(AsyncWebServerRequest* request) {
     json_["fullVoltage"] = String((gFullVoltagemV / 1000), 2);
 	json_["fullDelay"] = gFullDelayS;
 	json_["currentThreshold"] = String(gCurrentThreshold, 3);
-	json_["shuntResistance"] = gShuntResistancemR;
+	json_["shuntResistance"] = gShuntResistanceR;
 	json_["maxCurrent"] = gMaxCurrentA;
 	json_["voltageCalibrationFactor"] = gVoltageCalibrationFactor;
 	json_["currentCalibrationFactor"] = gCurrentCalibrationFactor;
@@ -417,7 +417,7 @@ void handleRoot(AsyncWebServerRequest* request) {
 
 	content_ += fp_.getHtmlFieldset("Shunt configuration").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistancemR, 3) + "&#8486;", "shuntResistance").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistanceR, 3) + "&#8486;", "shuntResistance").c_str();
 	content_ += fp_.getHtmlTableRowSpan("Shunt max current", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
@@ -479,7 +479,7 @@ void handleRoot(AsyncWebServerRequest* request) {
 }
 
 void convertParams() {
-    gShuntResistancemR = atof(shuntResistanceValue);
+    gShuntResistanceR = atof(shuntResistanceValue);
     gMaxCurrentA =atoi(maxCurrentValue); 
     gCapacityAh = atoi(battCapacityValue);
     gChargeEfficiencyPercent = atoi(chargeEfficiencyValue);
