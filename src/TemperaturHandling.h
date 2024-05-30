@@ -11,5 +11,6 @@
 
 extern void TemperaturInit();
 extern void TemperaturLoop();
+extern volatile float GetTemperatur();
 
 #endif
