@@ -31,7 +31,7 @@ void setup() {
     xTaskCreatePinnedToCore(
         loop2, /* Function to implement the task */
         "TaskHandle", /* Name of the task */
-        2000,  /* Stack size in words */
+        16384,  /* Stack size in words */
         NULL,  /* Task input parameter */
         0,  /* Priority of the task */
         &TaskHandle,  /* Task handle. */
@@ -42,21 +42,22 @@ void setup() {
 void loop() {
     if (gParamsChanged) {
         updateSensorConfig = true;
-
         gParamsChanged = false;
     }
+
     wifiLoop();
     sensorLoop();
     N2Kloop();
 
-   // gParamsChanged = false;
+    gBattery.setTemperatur(GetTemperatur());
+
 }
 
 void loop2(void* parameter) {
     for (;;) {   // Endless loop
 
         TemperaturLoop();
-        vTaskDelay(500);
+        vTaskDelay(1000);
 
         //UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
         //size_t remainingStackBytes = stackHighWaterMark * sizeof(StackType_t);
