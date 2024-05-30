@@ -73,12 +73,14 @@ The following PGN's will be send
 The Software has been created using Visual Studio with the addon Visual Micro. In order to build it you als need some libraries.
 
 - Wire
-- OneWire
-- DallasTemperature
-- NMEA2000
-- NMEA200_ESP
-- [AsyncTCP](https://github.com/dvarrel/AsyncTCP)
-- [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer)
+- [OneWire (2.3.7)](https://github.com/PaulStoffregen/OneWire)
+- [DallasTemperature(3.9.0)](https://github.com/milesburton/Arduino-Temperature-Control-Library)
+- [NMEA2000](https://github.com/ttlappalainen/NMEA2000)
+- [NMEA200_ESP32](https://github.com/ttlappalainen/NMEA2000_esp32)
+- [AsyncTCP (1.1.1)](https://github.com/me-no-dev/AsyncTCP.git)
+- [ESPAsyncWebServer (1.2.3)](https://github.com/me-no-dev/ESPAsyncWebServer)
+- [ArduionJSON (6.21.2)](https://github.com/bblanchon/ArduinoJson)
+- [Webserial (1.4.0)](https://github.com/ayushsharma82/WebSerial)
 - [IotWebConf](https://github.com/minou65/IotWebConf)
 - [IotWebConfAsync](https://github.com/minou65/IotWebConfAsync)
 - [IotWebRoot](https://github.com/minou65/IotWebRoot)
