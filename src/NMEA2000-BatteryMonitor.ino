@@ -6,8 +6,10 @@
 #include "webHandling.h"
 #include "TemperaturHandling.h"
 #include "NMEAHandling.h"
+#include "build.h"
 
-char Version[] = "1.1.0.7 (2024-05-25)"; // Manufacturer's Software version code
+// Manufacturer's Software version code
+char Version[] = "1.1.0.";
 
 // # define IOTWEBCONF_DEBUG_TO_SERIAL true
 
@@ -15,12 +17,21 @@ char Version[] = "1.1.0.7 (2024-05-25)"; // Manufacturer's Software version code
 TaskHandle_t TaskHandle;
 
 void setup() {
+    // Convert BUILD_NUMBER to a string
+    char buildNumberStr[5];
+    sprintf(buildNumberStr, "%d", BUILD);
+
+    // Concatenate the BUILD_NUMBER string to Version
+    strcat(Version, buildNumberStr);
+
     Serial.begin(115200);
 
     // wait for serial port to open on native usb devices
     while (!Serial) {
         delay(1);
     }
+
+    Serial.printf("Startup Version:%s\n", Version);
 
     wifiSetup();
 

@@ -1,0 +1,2 @@
+# Increment version before build
+recipe.hooks.prebuild.1.pattern=cmd.exe /c {ProjectDir}\version.cmd {ProjectDir}\build.h
