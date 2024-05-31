@@ -228,8 +228,14 @@ void wifiSetup() {
             request->send(response);
         }
     );
-    server.on("/setruntime", HTTP_GET, [](AsyncWebServerRequest* request) { handleSetRuntime(request); });
-    server.on("/setsoc", HTTP_POST, [](AsyncWebServerRequest* request) { onSetSoc(request); });
+    server.on("/setruntime", HTTP_GET, [](AsyncWebServerRequest* request) { 
+        handleSetRuntime(request); 
+        }
+    );
+    server.on("/setsoc", HTTP_POST, [](AsyncWebServerRequest* request) { 
+        onSetSoc(request); 
+        }
+    );
     server.on("/data", HTTP_GET, [](AsyncWebServerRequest* request) { handleData(request); });
 	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest* request) {
             AsyncWebServerResponse* response = request->beginResponse(302, "text/plain", "please wait while the device is rebooting ...");
@@ -329,7 +335,7 @@ void handleData(AsyncWebServerRequest* request) {
 	json_["current"] = String(gBattery.current(), 2);
 	json_["avgCurrent"] = String(gBattery.averageCurrent(), 2);
 	json_["soc"] = String(gBattery.soc() * 100, 1);
-    if (gBattery.tTg() != INFINITY) {
+    if ((gBattery.tTg() != INFINITY) && (gBattery.tTg() > 0)) {
         int _hours = gBattery.tTg() / 3600;
         std::string _minutes = std::to_string((gBattery.tTg() % 3600) / 60);
         _minutes.insert(0, 2 - _minutes.length(), '0');
@@ -356,7 +362,7 @@ void handleData(AsyncWebServerRequest* request) {
 	json_["currentCalibrationFactor"] = gCurrentCalibrationFactor;
 
     response->setLength();
-    request->send(response);
+	request->send(response);
 }
 
 class MyHtmlRootFormatProvider : public HtmlRootFormatProvider {
@@ -465,7 +471,7 @@ void handleRoot(AsyncWebServerRequest* request) {
         std::string chunk_ = "";
         size_t len_ = min(content_.length() - index, maxLen);
         if (len_ > 0) {
-            chunk_ = content_.substr(index, len_ - 1);
+            chunk_ = content_.substr(index, len_);
             chunk_.copy((char*)buffer, chunk_.length());
         }
         if (index + len_ <= content_.length())
@@ -474,6 +480,7 @@ void handleRoot(AsyncWebServerRequest* request) {
             return 0;
 
         });
+    response->setContentLength(content_.length());
     response->addHeader("Server", "ESP Async Web Server");
     request->send(response);
 }

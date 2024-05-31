@@ -16,7 +16,7 @@
 			- [Instance](#instance)
 			- [SID](#sid)
 		- [Shunt settings](#shunt-settings)
-			- [Shunt resistance \[mΩ\]](#shunt-resistance-mω)
+			- [Shunt resistance \[Ω\]](#shunt-resistance-ω)
 			- [Expected max current \[A\]](#expected-max-current-a)
 			- [Voltage calibration factor](#voltage-calibration-factor)
 			- [Current calibration factor](#current-calibration-factor)
@@ -110,7 +110,14 @@ This should be unique at least on one device. May be best to have it unique over
 Sequence identifier. In most cases you can use just 255 for SID. The sequence identifier field is used to tie different PGNs data together to same sampling or calculation time.
 
 ### Shunt settings
-#### Shunt resistance [mΩ]
+#### Shunt resistance [Ω]
+```
+R = U / I
+
+U in V
+I in A
+R in Ohm
+```
 
 #### Expected max current [A]
 
