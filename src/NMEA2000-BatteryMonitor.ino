@@ -22,7 +22,7 @@ void setup() {
     while (!Serial) {
         delay(1);
     }
-    Serial.printf("Firmware version:%s\n", Version);
+    Serial.println("NMEA2000-BatteryMonitor v" + String(Version) + " started");
 
     wifiSetup();
 
