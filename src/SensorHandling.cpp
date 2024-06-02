@@ -178,8 +178,8 @@ void updateAhCounter() {
 #ifdef DEBUG_SENSOR
     Serial.println(F("Update Ah counter"));
 
-    WebSerial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n", _current, gCurrentCalibrationFactor);
-    WebSerial.printf("sampletime is: %.2d; count is: %i\n", sampleTime, _count);
+    Serial.printf("current is: %.2f (CurrentCalibrationFactor = %.2f)\n", _current, gCurrentCalibrationFactor);
+    Serial.printf("    sampletime: %.2f\n    count: %i\n", sampleTime, _count);
     if(_count > 1) {
         Serial.printf("Overflow %d\n", _count);
 		WebSerial.printf("Overflow %d\n", _count);

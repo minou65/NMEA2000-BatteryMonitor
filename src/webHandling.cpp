@@ -109,7 +109,7 @@ char shuntResistanceValue[NUMBER_LEN];
 
 iotwebconf::ParameterGroup ShuntGroup = iotwebconf::ParameterGroup("ShuntGroup","Shunt");
 iotwebconf::NumberParameter shuntResistance = iotwebconf::NumberParameter("Shunt resistance [&#8486;]", "shuntR", shuntResistanceValue, NUMBER_LEN, "0.750", "0..100", "min='0.001' max='100' step='0.001'");
-iotwebconf::NumberParameter maxCurrent = iotwebconf::NumberParameter("Expected max current [A]", "maxA", maxCurrentValue, NUMBER_LEN, "200", "1..500", "min='1' max='500' step='1'");
+iotwebconf::NumberParameter maxCurrent = iotwebconf::NumberParameter("Expected max current [A]", "maxA", maxCurrentValue, NUMBER_LEN, "100", "1..500", "min='1' max='500' step='1'");
 iotwebconf::NumberParameter VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", "VoltageCalibrationFactor", VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
 iotwebconf::NumberParameter CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", "CurrentCalibrationFactor", CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
 
@@ -325,24 +325,23 @@ void handleSetRuntime(AsyncWebServerRequest* request) {
 }
 
 void handleData(AsyncWebServerRequest* request) {
-
     AsyncJsonResponse* response = new AsyncJsonResponse();
     response->addHeader("Server", "ESP Async Web Server");
     JsonVariant& json_ = response->getRoot();
 
 	json_["rssi"] = WiFi.RSSI();
 	json_["voltage"] = String(gBattery.voltage(), 2);
-	json_["current"] = String(gBattery.current(), 2);
+	json_["current"] = String(gBattery.current() * -1, 2);
 	json_["avgCurrent"] = String(gBattery.averageCurrent(), 2);
 	json_["soc"] = String(gBattery.soc() * 100, 1);
-    if ((gBattery.tTg() != INFINITY) && (gBattery.tTg() > 0)) {
+    if (gBattery.tTg() != 4294967295) {
         int _hours = gBattery.tTg() / 3600;
         std::string _minutes = std::to_string((gBattery.tTg() % 3600) / 60);
         _minutes.insert(0, 2 - _minutes.length(), '0');
 		json_["tTg"] = String(_hours) + ":" + _minutes.c_str();
 	}
     else {
-		json_["tTg"] = "888888";
+		json_["tTg"] = "00:00";
     }
 	json_["isFull"] = gBattery.isFull();
 	json_["temperature"] = String(gBattery.temperatur(), 2);

@@ -89,7 +89,7 @@ void SendN2kBattery(void) {
     const Statistics& stats = gBattery.statistics();
 
     unsigned int BatteryTimeToGo = gBattery.tTg();
-    double BatteryCurrent = gBattery.current();
+    double BatteryCurrent = gBattery.current() * -1;
     double BatteryVoltage = gBattery.voltage();
     double BatteryAvgConsumption = gBattery.averageCurrent();
     double BatteryPower = roundf(gBattery.current() * gBattery.voltage());

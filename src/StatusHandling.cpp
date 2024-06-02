@@ -18,81 +18,110 @@ BatteryStatus::BatteryStatus() {
 
 void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiencyPercent, uint16_t minPercent, uint16_t tailCurrentmA, uint16_t fullVoltagemV,uint16_t fullDelayS) {
 
-        batteryCapacity = ((float)capacityAh) *60.0f * 60.0f; // We use it in As
+        batteryCapacity = ((float)capacityAh) * 3600.0f; // We use it in As
         chargeEfficiency = ((float)chargeEfficiencyPercent) / 100.0f;
         tailCurrent = tailCurrentmA / 1000.0f;
         fullVoltage = fullVoltagemV / 1000.0f;
         minAs = minPercent * batteryCapacity / 100.0f;
-        fullDelay = ((unsigned long)fullDelayS) *1000;    
-        Serial.printf("Init values: Capacity %.3f, efficiency %.3f, fullDelayS %ld, tailCurrent %.3f, \n",batteryCapacity,chargeEfficiency,fullDelay, tailCurrent);
+        fullDelay = ((unsigned long)fullDelayS) *1000; 
+
+        Serial.println("BatteryStatus::setParameters");
+        Serial.printf("    capacityAh: %d\n", capacityAh);
+        Serial.printf("    capacityAs: %.3f\n", batteryCapacity);
+        Serial.printf("    chargeEfficiency: %.3f\n", chargeEfficiency);
+        Serial.printf("    tailCurrent: %.3f\n", tailCurrent);
+        Serial.printf("    fullVoltage: %.3f\n", fullVoltage);
+        Serial.printf("    minAs: %.3f\n", minAs);
+        Serial.printf("    fullDelay: %ld\n", fullDelay);
 
 }
 
 void BatteryStatus::updateSOC() {
     stats.socVal = stats.remainAs / batteryCapacity;
-    // Serial.printf("updateSOC: soc %.3f, remianAs %.3f, batteryCapacity %.3f, \n", stats.socVal, stats.remainAs, batteryCapacity);
+
+    //Serial.println("BatteryStatus::updateSOC");
+    //Serial.printf("    socVal: %.3f\n", stats.socVal);
+    //Serial.printf("    lastSoc: %.3f\n", lastSoc);
+    //Serial.printf("    remainAs: %.3f\n", stats.remainAs);
+    //Serial.printf("    batteryCapacity: %.3f\n", batteryCapacity);
+    //Serial.printf("    fabs: %.3f\n", fabs(lastSoc - stats.socVal));
+   
     if (fabs(lastSoc - stats.socVal) >= .005) {
         // Store value in RTC memory
         writeStatusToRTC();
-        lastSoc = stats.socVal;        
+        lastSoc = stats.socVal;
     }
 }
 
 void BatteryStatus::updateTtG() {
-    float avgCurrent = getAverageConsumption();
-    if (avgCurrent > 0.0) {
-        stats.tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / avgCurrent);
+    float _avgCurrent = getAverageConsumption();
+
+    if (_avgCurrent > 0.0) {
+        stats.tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / _avgCurrent);
     }  else {
         stats.tTgVal = INFINITY;
+        //Serial.println("BatteryStatus::updateTtG: Infinity");
     }
 
-    // Serial.printf("Ttg avgCurrent = %.3f, TtgVal = %.3f\n", avgCurrent, stats.tTgVal);
+    //Serial.println("BatteryStatus::updateTtG");
+    //Serial.printf("    avgCurrent : %.3f\n", _avgCurrent);
+    //Serial.printf("    TtgVal: %d\n", stats.tTgVal);
+    //Serial.printf("    remainAs: %.3f\n", stats.remainAs);
+    //Serial.printf("    minAs: %.3f\n", minAs);
 }
 
 void BatteryStatus::updateConsumption(float current, float period, uint16_t numPeriods) {
-
     // We use the average between the last and the current value for summation.
-    float periodConsumption;
+    float _periodConsumption;
 
     for (int i = 0; i < numPeriods; ++i) {
         if (currentValues.isFull()) {
-          float oldVal;
-          currentValues.pop(oldVal);
-          glidingAverageCurrent += oldVal;
+            float oldVal;
+            currentValues.pop(oldVal);
+            glidingAverageCurrent += oldVal;
         }
         currentValues.push(current);
         // Assumtion: Consumption is negative
         glidingAverageCurrent -= current;
-    }     
+    }
 
-    if(currentValues.isEmpty()) {
+    if (currentValues.isEmpty()) {
         // This is the first measurement, so we don't have an old current value
         lastCurrent = current;
     }
-    
-    periodConsumption = (lastCurrent + current) / 2.0 * period * numPeriods;
+
+    _periodConsumption = (lastCurrent + current) / 2.0 * period * numPeriods;
 
     // Has to be in 0.01 kWh....
-    float consumption = periodConsumption / 3.6 / 1000.0 / 10.0 * lastVoltage;
-    if (periodConsumption > 0) {
+    float consumption = _periodConsumption / 3.6 / 1000.0 / 10.0 * lastVoltage;
+    if (_periodConsumption > 0) {
         // We are charging
         stats.amountChargedEnergy += consumption;
-        periodConsumption *= chargeEfficiency;
-    } else {
-        stats.sumApHDrawn += periodConsumption / -3.6;
+        _periodConsumption *= chargeEfficiency;
+    }
+    else {
+        stats.sumApHDrawn += _periodConsumption / -3.6;
         stats.amountDischargedEnergy -= consumption;
     }
 
-    
-    stats.remainAs += periodConsumption;
-    stats.consumedAs += periodConsumption;
-    
+    //Serial.println("BatteryStatus::updateConsumption");
+    //Serial.printf("    current: %.3f\n", current);
+    //Serial.printf("    period: %.3f\n", period);
+    //Serial.printf("    numPeriods: %d\n", numPeriods);
+    //Serial.printf("    periodConsumption: %.3f\n", _periodConsumption);
+    //Serial.printf("    consumption: %.3f\n", consumption);
+
+
+    stats.remainAs += _periodConsumption;
+    stats.consumedAs += _periodConsumption;
+
     if (stats.remainAs > batteryCapacity) {
         stats.remainAs = batteryCapacity;
-    } else if(stats.remainAs < 0.0f) {
+    }
+    else if (stats.remainAs < 0.0f) {
         stats.remainAs = 0.0f;
     }
-    
+
     lastCurrent = current;
 }
 
@@ -114,20 +143,22 @@ void BatteryStatus::setTemperatur(float currTemperatur) {
 }
 
 bool BatteryStatus::checkFull() {
+
     if (lastVoltage >= fullVoltage) {
         
         if (stats.socVal < 0.99) {
             // This is just to indicate that we will be close to full
             setBatterySoc(0.99);
         }
-        float current = -1 * getAverageConsumption();
-        if (current >= 0.0 && current <= tailCurrent) {
-            unsigned long now = millis();
+        float _current = -1 * getAverageConsumption();
+        if (_current >= 0.0 && _current <= tailCurrent) {
+            unsigned long _now = millis();
             if (fullReachedAt == 0) {
-                fullReachedAt = now;
+                fullReachedAt = _now;
             }
-            unsigned long delay = now - fullReachedAt;
-            if (delay >= fullDelay) {
+
+            unsigned long _delay = _now - fullReachedAt;
+            if (_delay >= fullDelay) {
                 // And here we are. 100 %
                 setBatterySoc(1.0);
                 if (!isSynced) {
