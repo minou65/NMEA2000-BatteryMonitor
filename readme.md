@@ -11,6 +11,13 @@
 	- [NMEA 2000](#nmea-2000)
 	- [Librarys](#librarys)
 	- [Required hardware](#required-hardware)
+	- [Running values](#running-values)
+		- [Battery voltage](#battery-voltage)
+		- [Shunt current](#shunt-current)
+		- [Avg consumption](#avg-consumption)
+		- [Time to go](#time-to-go)
+		- [Battery full](#battery-full)
+		- [Temperature](#temperature)
 	- [Configuration](#configuration)
 		- [NEMA](#nema)
 			- [Instance](#instance)
@@ -101,6 +108,24 @@ There are plenty of options out there. Make sure that you select a resistor appr
 If you have a 48V System, be aware of the fact that the INA226 does only support voltages up to 36V (40V max). You need a voltage divider to make shure your sensor is not destroyed. 
 The code assumes that you use a __470KOhm and a 1MOhm__ resistor, measuring across the 1MOhm towards GND. `( + --470K-- --1M -- GND )` The smaller you choose the small resistor in comparison to the bigger one, the more accurate the measurement will be.
 
+## Running values
+### Battery voltage
+
+### Shunt current
+Current in amperes flowing through the shunt. If the current is negative, the battery is being charged. If it is positive, the battery is being discharged.
+
+### Avg consumption
+The average current consumption in the last 60 seconds.
+
+### Time to go
+If the time is 00:00, then the battery is charging. Otherwise, it will display an estimate in hours and minutes of how long, based on the current consumption, it will take until the battery is empty.
+
+### Battery full
+true or false
+
+### Temperature
+
+
 ## Configuration
 ### NEMA
 #### Instance
@@ -119,7 +144,19 @@ I in A
 R in Ohm
 ```
 
+Assuming a voltage of 75 mV at nominal current, the resulting resistance in ohms will be as follows:
+
+| Shunt Current | Resistance in Ohm | Remarks |
+| --- | --- | --- |
+| 2 | 100 | Original resistor on the board. |
+| 50A | 1.500 |
+| 100A | 0.750 |
+| 200A | 0.375 |
+| 300A | 0.250 |
+
+
 #### Expected max current [A]
+maximum current that may flow through the shut
 
 #### Voltage calibration factor
 
