@@ -9,7 +9,7 @@
 #include "version.h"
 
 // Manufacturer's Software version code
-char Version[] = VERSION;
+char Version[] = VERSION_STR;
 
 // # define IOTWEBCONF_DEBUG_TO_SERIAL true
 
@@ -22,7 +22,7 @@ void setup() {
     while (!Serial) {
         delay(1);
     }
-    Serial.println("NMEA2000-BatteryMonitor v" + String(Version) + " started");
+    Serial.println("NMEA2000-BatteryMonitor v" + String(VERSION) + " started");
 
     wifiSetup();
 
