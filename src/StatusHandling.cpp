@@ -37,7 +37,35 @@ void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiency
 }
 
 void BatteryStatus::updateSOC() {
-    stats.socVal = stats.remainAs / batteryCapacity;
+    if (gCurrentCalibrationFactor != 0) {
+        stats.socVal = stats.remainAs / batteryCapacity;;
+    }
+    else {
+        if (lastVoltage > 12.6) {
+            stats.socVal = 1.0;
+        } else if(lastVoltage > 12.5){
+			stats.socVal = 0.9;
+		} else if(lastVoltage > 12.42) {
+			stats.socVal = 0.8;
+		} else if(lastVoltage > 12.33) {
+			stats.socVal = 0.7;
+		} else if(lastVoltage > 12.2) {
+			stats.socVal = 0.6;
+		} else if(lastVoltage > 12.06) {
+			stats.socVal = 0.5;
+		} else if(lastVoltage > 11.9) {
+			stats.socVal = 0.4;
+		} else if(lastVoltage > 11.75) {
+			stats.socVal = 0.3;
+		} else if(lastVoltage > 11.58) {
+			stats.socVal = 0.2;
+		} else if(lastVoltage > 11.31) {
+			stats.socVal = 0.1;
+        }
+        else {
+            stats.socVal = 0.0;
+        }
+    }
 
     //Serial.println("BatteryStatus::updateSOC");
     //Serial.printf("    socVal: %.3f\n", stats.socVal);
@@ -59,7 +87,7 @@ void BatteryStatus::updateTtG() {
     if (_avgCurrent > 0.0) {
         stats.tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / _avgCurrent);
     }  else {
-        stats.tTgVal = INFINITY;
+        stats.tTgVal = 0;
         //Serial.println("BatteryStatus::updateTtG: Infinity");
     }
 

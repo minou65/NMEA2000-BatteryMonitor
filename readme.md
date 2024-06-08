@@ -15,7 +15,8 @@
 		- [Battery voltage](#battery-voltage)
 		- [Shunt current](#shunt-current)
 		- [Avg consumption](#avg-consumption)
-		- [Time to go](#time-to-go)
+		- [State of charge (Soc)](#state-of-charge-soc)
+		- [Time to go (Ttg)](#time-to-go-ttg)
 		- [Battery full](#battery-full)
 		- [Temperature](#temperature)
 	- [Configuration](#configuration)
@@ -117,7 +118,14 @@ Current in amperes flowing through the shunt. If the current is negative, the ba
 ### Avg consumption
 The average current consumption in the last 60 seconds.
 
-### Time to go
+### State of charge (Soc)
+Shows the charge level of the battery. This is calculated based on the capacity and the Ah consumed and is an estimate based on the current consumption.
+
+If no shunt is used and the current calibration factor is set to 0, the following table is used to calculate the Soc
+
+![alt text](img/Ladezustand_60be.jpg)
+
+### Time to go (Ttg)
 If the time is 00:00, then the battery is charging. Otherwise, it will display an estimate in hours and minutes of how long, based on the current consumption, it will take until the battery is empty.
 
 ### Battery full
@@ -159,8 +167,13 @@ Assuming a voltage of 75 mV at nominal current, the resulting resistance in ohms
 maximum current that may flow through the shut
 
 #### Voltage calibration factor
+Use a multimeter to measure the voltage on the battery. The measured voltage divided by the voltage displayed by the battery monitor gives the factor that you enter here.
 
 #### Current calibration factor
+Use a multimeter to measure the current at the shunt. The measured current divided by the current displayed by the battery monitor gives the factor that you enter here.
+
+If you do not want to use a shunt, enter 0 here. See also [State of charge (Soc)](#state-of-charge-soc)
+
 
 ### Battery
 #### Type
