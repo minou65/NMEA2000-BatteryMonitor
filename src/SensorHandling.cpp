@@ -41,6 +41,7 @@ bool updateSensorConfig = true;
 
 static INA226 ina(Wire);
 Neotimer statisticsTimer = Neotimer(1000);
+Neotimer outputTimer = Neotimer(15000);
 
 IRAM_ATTR void alert(void) { ++alertCounter; }
 
@@ -130,6 +131,7 @@ void setupSensor() {
     // Default INA226 address is 0x40
     gSensorInitialized = ina.begin();
 	statisticsTimer.start();
+    outputTimer.start();
 
     // Check if the connection was successful, stop if not
     if (!gSensorInitialized) {
@@ -175,6 +177,11 @@ void updateAhCounter() {
     float _current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
     gBattery.updateConsumption(_current, sampleTime, _count);
 
+    //WebSerial.println(F("Update Ah counter"));
+    //WebSerial.printf("    current: %.2f\n", _current);
+    //WebSerial.printf("    voltage: %.2f\n", gBattery.voltage());
+    //WebSerial.printf("    sampletime: %.2f\n    count: %i\n", sampleTime, _count);
+
 #ifdef DEBUG_SENSOR
     Serial.println(F("Update Ah counter"));
 
@@ -219,11 +226,16 @@ void sensorLoop() {
         gBattery.updateSOC();
         gBattery.updateTtG();
         gBattery.updateStats(_now);
+	}
 
-        WebSerial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
-        WebSerial.printf("Bus power:     %.3fW\n", ina.readBusPower());
-        WebSerial.printf("Shunt voltage: %.3fV\n", ina.readShuntVoltage());
-        WebSerial.printf("Shunt current: %.3fA\n", ina.readShuntCurrent());
+    if (outputTimer.repeat()) {
+        WebSerial.println(F("Battery status"));
+        WebSerial.printf("    voltage:      %.3fV\n", gBattery.voltage());
+        WebSerial.printf("    current:      %.3fA\n", gBattery.current());
+        WebSerial.printf("    average:      %.3fA\n", gBattery.averageCurrent());
+        WebSerial.printf("    SOC:          %.3f\n", gBattery.soc());
+        WebSerial.printf("    TTG:          %ds\n", gBattery.tTg());
+        WebSerial.printf("    remaining As: %.3f\n", gBattery.remainingAs());
 
 #ifdef DEBUG_SENSOR
         Serial.printf("Bus voltage:   %.3fV\n", ina.readBusVoltage());
