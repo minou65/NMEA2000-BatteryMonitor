@@ -89,15 +89,14 @@ void SendN2kBattery(void) {
     const Statistics& stats = gBattery.statistics();
 
     unsigned int BatteryTimeToGo = gBattery.tTg();
-    double BatteryCurrent = gBattery.current() * -1;
-    double BatteryVoltage = gBattery.voltage();
+    float BatteryCurrent = gBattery.current();
+    float BatteryVoltage = gBattery.voltage();
     double BatteryAvgConsumption = gBattery.averageCurrent();
     double BatteryPower = roundf(gBattery.current() * gBattery.voltage());
     double BatteryTemperature = gBattery.temperatur();
     double BatteryConsumedAs = roundf(stats.consumedAs / 3.6);
     double BatterySOC = gBattery.soc();
     byte BatterIsFull = gBattery.isFull();
-
     
     if (DCBatStatusScheduler.IsTime()) {
         DCBatStatusScheduler.UpdateNextTime();
