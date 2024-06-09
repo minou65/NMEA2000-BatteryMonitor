@@ -110,8 +110,8 @@ char shuntResistanceValue[NUMBER_LEN];
 iotwebconf::ParameterGroup ShuntGroup = iotwebconf::ParameterGroup("ShuntGroup","Shunt");
 iotwebconf::NumberParameter shuntResistance = iotwebconf::NumberParameter("Shunt resistance [&#8486;]", "shuntR", shuntResistanceValue, NUMBER_LEN, "0.750", "0..100", "min='0.001' max='100' step='0.001'");
 iotwebconf::NumberParameter maxCurrent = iotwebconf::NumberParameter("Expected max current [A]", "maxA", maxCurrentValue, NUMBER_LEN, "100", "1..500", "min='1' max='500' step='1'");
-iotwebconf::NumberParameter VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", "VoltageCalibrationFactor", VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
-iotwebconf::NumberParameter CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", "CurrentCalibrationFactor", CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "e.g. 1.00001", "step='0.00001'");
+iotwebconf::NumberParameter VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", "VoltageCalibrationFactor", VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
+iotwebconf::NumberParameter CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", "CurrentCalibrationFactor", CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
 
 char BatTypeValue[STRING_LEN];
 char BatNomVoltValue[STRING_LEN];
@@ -331,14 +331,15 @@ void handleData(AsyncWebServerRequest* request) {
 
 	json_["rssi"] = WiFi.RSSI();
 	json_["voltage"] = String(gBattery.voltage(), 2);
-	json_["current"] = String(gBattery.current() * -1, 2);
+	json_["current"] = String(gBattery.current(), 2);
 	json_["avgCurrent"] = String(gBattery.averageCurrent(), 2);
 	json_["soc"] = String(gBattery.soc() * 100, 1);
     if (gBattery.tTg() != 4294967295) {
-        int _hours = gBattery.tTg() / 3600;
+        std::string _hours = std::to_string(gBattery.tTg() / 3600);
         std::string _minutes = std::to_string((gBattery.tTg() % 3600) / 60);
         _minutes.insert(0, 2 - _minutes.length(), '0');
-		json_["tTg"] = String(_hours) + ":" + _minutes.c_str();
+        _hours.insert(0, 2 - _hours.length(), '0');
+		json_["tTg"] = _hours + ":" + _minutes.c_str();
 	}
     else {
 		json_["tTg"] = "00:00";
@@ -410,43 +411,43 @@ void handleRoot(AsyncWebServerRequest* request) {
 
 	content_ += fp_.getHtmlFieldset("Running values").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Battery Voltage", "no data", "VoltageValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt current", "no data", "CurrentValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Avg consumption", "no data", "AverageCurrentValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("State of charge", "no data", "SocValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Time to go", "no data", "tTgValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Battery full", "no data", "isFullValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Temperature", "no data", "TemperatureValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
 	content_ += fp_.getHtmlFieldset("Shunt configuration").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt resistance", String(gShuntResistanceR, 3) + "&#8486;", "shuntResistance").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt max current", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 3) + "&#8486;", "shuntResistance").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
 	content_ += fp_.getHtmlFieldset("Battery configuration").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Type", String(BatTypeNames[gBatteryType]), "BatType").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Capacity", String(gCapacityAh) + "Ah", "battCapacity").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Efficiency", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Min SOC", String(gMinPercent) + "%", "minSoc").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[gBatteryType]), "BatType").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Capacity:", String(gCapacityAh) + "Ah", "battCapacity").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Efficiency:", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Min SOC:", String(gMinPercent) + "%", "minSoc").c_str();
     float mA_ = gTailCurrentmA;
     float mV_ = gFullVoltagemV;
-    content_ += fp_.getHtmlTableRowSpan("Tail current", String((mA_ / 1000), 3) + "A", "tailCurrent").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Full voltage", String((mV_ / 1000), 2) + "V", "fullVoltage").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Full delay", String(gFullDelayS) + "s", "fullDelay").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Manufacturer", String(BatteryManufacturerValue), "BattManufacturer").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Replacment date", String(BatteryReplacmentDateValue), "BattDate").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Full delay:", String(gFullDelayS) + "s", "fullDelay").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Manufacturer:", String(BatteryManufacturerValue), "BattManufacturer").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Replacment date:", String(BatteryReplacmentDateValue), "BattDate").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
 	content_ += fp_.getHtmlFieldset("Network").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowText("MAC Address", WiFi.macAddress()).c_str();
-	content_ += fp_.getHtmlTableRowText("IP Address", WiFi.localIP().toString().c_str()).c_str();
+	content_ += fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress()).c_str();
+	content_ += fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str()).c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
 
