@@ -82,13 +82,16 @@ void BatteryStatus::updateSOC() {
 }
 
 void BatteryStatus::updateTtG() {
-    float _avgCurrent = getAverageConsumption();
+    float _avgCurrent = getAverageConsumption() * -1;
 
     if (_avgCurrent > 0.0) {
-        stats.tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / _avgCurrent);
+        unsigned int _tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / _avgCurrent);
+        if (_tTgVal > 359940) {
+            _tTgVal = 359940;
+        }
+        stats.tTgVal = _tTgVal;
     }  else {
         stats.tTgVal = 0;
-        //Serial.println("BatteryStatus::updateTtG: Infinity");
     }
 
     //Serial.println("BatteryStatus::updateTtG");
@@ -156,7 +159,8 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
 float BatteryStatus::getAverageConsumption() {
     uint16_t count = currentValues.size();
     if (count != 0) {
-        return  glidingAverageCurrent / count;
+		return  (glidingAverageCurrent / count) * -1;
+        
     } else {
         return 0;
     }

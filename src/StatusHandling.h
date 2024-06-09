@@ -78,6 +78,10 @@ public:
       return lastTemperature;
     }
 
+    float remainingAs() {
+		return stats.remainAs;
+	}
+
     void setBatterySoc(float val);
     const Statistics& statistics() {return stats;}
 
