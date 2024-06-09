@@ -13,8 +13,8 @@
 	- [Required hardware](#required-hardware)
 	- [Running values](#running-values)
 		- [Battery voltage](#battery-voltage)
-		- [Shunt current](#shunt-current)
-		- [Avg consumption](#avg-consumption)
+		- [Current](#current)
+		- [Avg current](#avg-current)
 		- [State of charge (Soc)](#state-of-charge-soc)
 		- [Time to go (Ttg)](#time-to-go-ttg)
 		- [Battery full](#battery-full)
@@ -112,10 +112,11 @@ The code assumes that you use a __470KOhm and a 1MOhm__ resistor, measuring acro
 ## Running values
 ### Battery voltage
 
-### Shunt current
-Current in amperes flowing through the shunt. If the current is negative, the battery is being charged. If it is positive, the battery is being discharged.
+### Current
+Current in amperes flowing through the shunt. If the current is positiv, the battery is being charged. If it is negative, the battery is being discharged.
+See [Current calibration factor](#current-calibration-factor) for more information.
 
-### Avg consumption
+### Avg current
 The average current consumption in the last 60 seconds.
 
 ### State of charge (Soc)
@@ -174,6 +175,7 @@ Use a multimeter to measure the current at the shunt. The measured current divid
 
 If you do not want to use a shunt, enter 0 here. See also [State of charge (Soc)](#state-of-charge-soc)
 
+Normally a positive current means that the battery is being charged, a negative current means that it is being discharged. If this is the other way round due to incorrect installation of the shunt, the current can be "reversed" by a negative factor.
 
 ### Battery
 #### Type
