@@ -43,6 +43,10 @@ void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiency
         minAs = minPercent * batteryCapacity / 100.0f;
         fullDelay = ((unsigned long)fullDelayS) *1000; 
 
+        if (gCurrentCalibrationFactor < 0) {
+            tailCurrent = tailCurrent * -1;
+        }
+
         Serial.println("BatteryStatus::setParameters");
         Serial.printf("    capacityAh: %d\n", capacityAh);
         Serial.printf("    capacityAs: %.3f\n", batteryCapacity);
@@ -206,8 +210,9 @@ bool BatteryStatus::checkFull() {
             // This is just to indicate that we will be close to full
             setBatterySoc(0.999);
         }
-        float _current = -1 * getAverageConsumption();
-        if (_current >= 0.0 && _current <= tailCurrent) {
+        float _current = getAverageConsumption();
+
+        if (_current <= tailCurrent) {
             unsigned long _now = millis();
             if (fullReachedAt == 0) {
                 fullReachedAt = _now;
@@ -229,6 +234,7 @@ bool BatteryStatus::checkFull() {
             }
         } else {
             fullReachedAt = 0;
+            setBatterySoc(0.999);
         }
     } else {
         fullReachedAt = 0;
