@@ -1,6 +1,11 @@
 #include "common.h"
 #include "statusHandling.h"
 
+#ifdef ESP32
+#include <Preferences.h>
+#endif
+
+
 BatteryStatus gBattery;
 
 BatteryStatus::BatteryStatus() {
@@ -11,9 +16,22 @@ BatteryStatus::BatteryStatus() {
     lasStatUpdate = 0;
     lastTemperature = 0;
     isSynced = false;
-    if (!readStatusFromRTC()) {
-        stats.init();
-    }
+}
+
+void BatteryStatus::begin() {
+	lastCurrent = 0;
+	fullReachedAt = 0;
+	lastSoc = 0;
+	glidingAverageCurrent = 0;
+	lasStatUpdate = 0;
+	lastTemperature = 0;
+	isSynced = false;
+    if (!readStatusFromPreferences()) {
+		stats.init();
+        Serial.println("BatteryStatus::begin: No data found, loading default");
+	} else {
+		Serial.println("BatteryStatus::begin: Preferences data found");
+	}
 }
 
 void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiencyPercent, uint16_t minPercent, uint16_t tailCurrentmA, uint16_t fullVoltagemV,uint16_t fullDelayS) {
@@ -77,6 +95,7 @@ void BatteryStatus::updateSOC() {
     if (fabs(lastSoc - stats.socVal) >= .005) {
         // Store value in RTC memory
         writeStatusToRTC();
+        writeStatusToPrefernces();
         lastSoc = stats.socVal;
     }
 }
@@ -84,21 +103,26 @@ void BatteryStatus::updateSOC() {
 void BatteryStatus::updateTtG() {
     float _avgCurrent = getAverageConsumption() * -1;
 
-    if (_avgCurrent > 0.0) {
-        unsigned int _tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / _avgCurrent);
-        if (_tTgVal > 359940) {
-            _tTgVal = 359940;
-        }
-        stats.tTgVal = _tTgVal;
-    }  else {
-        stats.tTgVal = 0;
-    }
-
     //Serial.println("BatteryStatus::updateTtG");
     //Serial.printf("    avgCurrent : %.3f\n", _avgCurrent);
     //Serial.printf("    TtgVal: %d\n", stats.tTgVal);
     //Serial.printf("    remainAs: %.3f\n", stats.remainAs);
     //Serial.printf("    minAs: %.3f\n", minAs);
+
+    if (_avgCurrent > 0.0) {
+        unsigned int _tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / _avgCurrent);
+        
+        if (_tTgVal > 359940) {
+            _tTgVal = 359940;
+        }
+        stats.tTgVal = _tTgVal;
+    }  else if (_avgCurrent == 0.0){
+
+    } else {
+		stats.tTgVal = 0;
+	}
+
+
 }
 
 void BatteryStatus::updateConsumption(float current, float period, uint16_t numPeriods) {
@@ -215,10 +239,11 @@ bool BatteryStatus::checkFull() {
 void BatteryStatus::setBatterySoc(float val) {
     stats.socVal = val;
     stats.remainAs = batteryCapacity * val;
-    if(val>=1.0) {
+    if(val >= 1.0) {
         fullReachedAt = millis();
     }
     updateTtG();
+    writeStatusToPrefernces();
 }
 
 void BatteryStatus::resetStats() {
@@ -280,6 +305,24 @@ bool BatteryStatus::readStatusFromRTC() {
     return res;
 }
 
+void BatteryStatus::writeStatusToPrefernces() {
+	Preferences preferences;
+	preferences.begin("BatteryMonitor", false);
+	preferences.putBytes("stats", &stats, sizeof(stats));
+	preferences.end();
+}
+
+bool BatteryStatus::readStatusFromPreferences() {
+	bool res = true;
+	Preferences preferences;
+	preferences.begin("BatteryMonitor", true);
+	if (preferences.getBytes("stats", &stats, sizeof(stats)) != sizeof(stats)) {
+		res = false;
+	}
+	preferences.end();
+	return res;
+}
+
 #else 
 void BatteryStatus::writeStatusToRTC() {
     ESP.rtcUserMemoryWrite(0, (uint32_t*)&stats, sizeof(stats));
@@ -298,4 +341,12 @@ bool BatteryStatus::readStatusFromRTC() {
 
     return true;
 }
+
+void BatteryStatus::writeStatusToPrefernces() {
+}
+
+bool BatteryStatus::readStatusFromPreferences() {
+    return false;
+}
+
 #endif

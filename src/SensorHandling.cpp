@@ -160,6 +160,8 @@ void sensorInit() {
 
     setupSensor();
 
+    gBattery.begin();
+
 	if (!gSensorInitialized) {
 		return;
 	}

@@ -291,12 +291,11 @@ void onProgress(size_t prg, size_t sz) {
 }
 
 void onSetSoc(AsyncWebServerRequest* request) {
-    String soc = request->arg("soc");
-    soc.trim();
-    if (!soc.isEmpty()) {
-        float socVal = soc.toInt() / 100.00;
-        gBattery.setBatterySoc((float)socVal);
-        //Serial.printf("Set soc to %.2f",gBattery.soc());
+    String _soc = request->arg("soc");
+    _soc.trim();
+    if (!_soc.isEmpty()) {
+        float _socVal = _soc.toInt() / 100.00;
+        gBattery.setBatterySoc(_socVal);
     }
 
     request->send(200, "text/html", SOC_RESPONSE);

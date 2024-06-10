@@ -45,6 +45,7 @@ public:
     BatteryStatus();
     ~BatteryStatus() {}
 
+    void begin();
     void setParameters(uint16_t capacityAh, uint16_t chargeEfficiencyPercent, uint16_t minPercent, uint16_t tailCurrentmA, uint16_t fullVoltagemV, uint16_t fullDelayS);
     void updateSOC();
     void updateTtG();
@@ -91,6 +92,8 @@ public:
         void resetStats();
         void writeStatusToRTC();
         bool readStatusFromRTC();
+        void writeStatusToPrefernces();
+        bool readStatusFromPreferences();
         RingBuf<float, GlidingAverageWindow> currentValues;
         float batteryCapacity;
         float chargeEfficiency; // Value between 0 and 1 (representing percent)       
