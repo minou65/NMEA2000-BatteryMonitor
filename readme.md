@@ -65,8 +65,7 @@ The INA226 should be connected to the shunt so that charges going into the batte
  ## Disclaimer
  | | |
  |-|-----------------|
- | <img src="img/warning.png" width="100" alt="warning"> |**Warning:** </br>- Allways use a fuse in the + line from the battery to the sensor!!</br>- Be careful when using metal tools in the vicinity of batteries. Dropping a metal tool onto a battery
-might cause a short circuit and possibly an explosion.
+ | <img src="img/warning.png" width="100" alt="warning"> |**Warning:** </br>- Allways use a fuse in the + line from the battery to the sensor!!</br>- Be careful when using metal tools in the vicinity of batteries. Dropping a metal tool onto a battery might cause a short circuit and possibly an explosion.
 
 ## Schema
 <img src="sch/schema.png" width="600" alt="schema">
