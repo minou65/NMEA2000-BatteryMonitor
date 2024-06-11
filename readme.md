@@ -1,6 +1,6 @@
 ﻿# NMEA Battery monitor
 
-<img src="img/garmin-battery.png" width="600" alt="garmin">
+<img src="img/IMG_0298.png" width="600" alt="garmin">
 
 ## Table of contents
 - [NMEA Battery monitor](#nmea-battery-monitor)
