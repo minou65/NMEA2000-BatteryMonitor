@@ -5386,7 +5386,6 @@ CANH = weiss</text>
 <text x="2.54" y="147.32" size="1.778" layer="97">Battery -</text>
 <text x="2.54" y="132.08" size="1.778" layer="97">To Load</text>
 <text x="2.54" y="160.02" size="1.778" layer="97">Battery +</text>
-<text x="165.1" y="33.02" size="1.778" layer="97">Supply voltage for ESP32 from NEMA Bus</text>
 <text x="255.016" y="5.842" size="5.08" layer="97">A</text>
 </plain>
 <instances>
@@ -5442,12 +5441,6 @@ CANH = weiss</text>
 </instance>
 <instance part="X1" gate="-3" x="20.32" y="129.54" smashed="yes">
 <attribute name="NAME" x="19.05" y="130.429" size="1.778" layer="95" rot="R180"/>
-</instance>
-<instance part="X2" gate="-1" x="25.4" y="93.98" smashed="yes">
-<attribute name="NAME" x="24.13" y="94.869" size="1.778" layer="95" rot="R180"/>
-</instance>
-<instance part="X2" gate="-2" x="25.4" y="76.2" smashed="yes">
-<attribute name="NAME" x="24.13" y="77.089" size="1.778" layer="95" rot="R180"/>
 </instance>
 <instance part="X2" gate="-3" x="27.94" y="53.34" smashed="yes">
 <attribute name="NAME" x="26.67" y="54.229" size="1.778" layer="95" rot="R180"/>
@@ -5518,18 +5511,31 @@ CANH = weiss</text>
 <wire x1="83.82" y1="149.86" x2="83.82" y2="144.78" width="0.1524" layer="91"/>
 <wire x1="83.82" y1="144.78" x2="144.78" y2="144.78" width="0.1524" layer="91"/>
 <junction x="144.78" y="144.78"/>
-<pinref part="X2" gate="-2" pin="KL"/>
-<wire x1="30.48" y1="76.2" x2="60.96" y2="76.2" width="0.1524" layer="91"/>
+<pinref part="IC2" gate="G$1" pin="IN+"/>
+<wire x1="68.58" y1="149.86" x2="68.58" y2="144.78" width="0.1524" layer="91"/>
+<wire x1="68.58" y1="144.78" x2="60.96" y2="144.78" width="0.1524" layer="91"/>
+<pinref part="R2" gate="G$1" pin="2"/>
+<wire x1="60.96" y1="144.78" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
+<wire x1="30.48" y1="142.24" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
+<junction x="30.48" y="144.78"/>
+<wire x1="30.48" y1="144.78" x2="25.4" y2="144.78" width="0.1524" layer="91"/>
+<pinref part="X1" gate="-2" pin="KL"/>
+<wire x1="60.96" y1="76.2" x2="60.96" y2="144.78" width="0.1524" layer="91"/>
+<junction x="60.96" y="144.78"/>
 </segment>
 </net>
 <net name="12V" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="VBS"/>
-<wire x1="73.66" y1="149.86" x2="73.66" y2="142.24" width="0.1524" layer="91"/>
-<wire x1="73.66" y1="142.24" x2="40.64" y2="142.24" width="0.1524" layer="91"/>
+<wire x1="73.66" y1="149.86" x2="73.66" y2="124.46" width="0.1524" layer="91"/>
+<wire x1="73.66" y1="124.46" x2="40.64" y2="124.46" width="0.1524" layer="91"/>
 <pinref part="X1" gate="-1" pin="KL"/>
-<wire x1="40.64" y1="142.24" x2="40.64" y2="157.48" width="0.1524" layer="91"/>
+<wire x1="40.64" y1="124.46" x2="40.64" y2="157.48" width="0.1524" layer="91"/>
 <wire x1="40.64" y1="157.48" x2="22.86" y2="157.48" width="0.1524" layer="91"/>
+<pinref part="D1" gate="1" pin="A"/>
+<wire x1="43.18" y1="93.98" x2="40.64" y2="93.98" width="0.1524" layer="91"/>
+<wire x1="40.64" y1="93.98" x2="40.64" y2="124.46" width="0.1524" layer="91"/>
+<junction x="40.64" y="124.46"/>
 </segment>
 </net>
 <net name="CANL" class="0">
@@ -5640,25 +5646,6 @@ CANH = weiss</text>
 <pinref part="IC1" gate="1" pin="IN"/>
 <wire x1="71.12" y1="93.98" x2="48.26" y2="93.98" width="0.1524" layer="91"/>
 <pinref part="D1" gate="1" pin="C"/>
-</segment>
-</net>
-<net name="N$5" class="0">
-<segment>
-<pinref part="X2" gate="-1" pin="KL"/>
-<pinref part="D1" gate="1" pin="A"/>
-<wire x1="30.48" y1="93.98" x2="43.18" y2="93.98" width="0.1524" layer="91"/>
-</segment>
-</net>
-<net name="N$9" class="0">
-<segment>
-<pinref part="IC2" gate="G$1" pin="IN+"/>
-<wire x1="68.58" y1="149.86" x2="68.58" y2="144.78" width="0.1524" layer="91"/>
-<wire x1="68.58" y1="144.78" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
-<pinref part="R2" gate="G$1" pin="2"/>
-<wire x1="30.48" y1="142.24" x2="30.48" y2="144.78" width="0.1524" layer="91"/>
-<junction x="30.48" y="144.78"/>
-<wire x1="30.48" y1="144.78" x2="25.4" y2="144.78" width="0.1524" layer="91"/>
-<pinref part="X1" gate="-2" pin="KL"/>
 </segment>
 </net>
 </nets>
