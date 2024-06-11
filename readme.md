@@ -63,7 +63,9 @@ The INA226 should be connected to the shunt so that charges going into the batte
  The system communicates via the NMEA 2000 protocol, sending temperature values and alarms as NMEA 2000 messages over an NMEA bus. Configuration is done through a web interface, and real-time values can be viewed on a website. Additionally, there's a link on the configuration page for convenient firmware updates.
 
  ## Disclaimer
- [!IMPORTANT]**Warning:** Allways use a fuse in the + line from the battery to the sensor!![!IMPORTANT]
+ | | |
+ |---|---|
+ | <img src="img/warning.png" width="100" alt="warning"> |**Warning:** Allways use a fuse in the + line from the battery to the sensor!!
 
 ## Schema
 <img src="sch/schema.png" width="600" alt="schema">
