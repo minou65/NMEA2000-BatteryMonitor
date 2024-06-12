@@ -286,7 +286,7 @@ void BatteryStatus::updateStats(unsigned long now) {
         stats.maxBatVoltage = voltageV;
     }   
 
-    if (stats.deepestTemperatur > lastTemperature) {
+    if ((stats.deepestTemperatur > lastTemperature) || (stats.deepestTemperatur == -127.00)) {
         stats.deepestTemperatur = lastTemperature;
     }
     if (stats.highestTemperatur < lastTemperature) {
