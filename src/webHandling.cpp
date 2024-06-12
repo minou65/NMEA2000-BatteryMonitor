@@ -375,8 +375,8 @@ void handleData(AsyncWebServerRequest* request) {
     json_["minBatVoltage"] = String(stats_.minBatVoltage / 1000.00f, 2); // V
     json_["maxBatVoltage"] = String(stats_.maxBatVoltage / 1000.00f, 2); // V
 
-    std::string _hours2 = std::to_string(gBattery.tTg() / 3600);
-    std::string _minutes2 = std::to_string((gBattery.tTg() % 3600) / 60);
+    std::string _hours2 = std::to_string(stats_.secsSinceLastFull / 3600);
+    std::string _minutes2 = std::to_string((stats_.secsSinceLastFull % 3600) / 60);
     _minutes2.insert(0, 2 - _minutes2.length(), '0');
     _hours2.insert(0, 2 - _hours2.length(), '0');
     json_["TimeSinceLastFull"] = _hours2 + ":" + _minutes2.c_str();
@@ -483,9 +483,10 @@ void handleRoot(AsyncWebServerRequest* request) {
 	content_ += fp_.addNewLine(2).c_str();
     
 	content_ += fp_.getHtmlTable().c_str();
-    content_ += fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data.").c_str();
-	content_ += fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration.").c_str();
-    content_ += fp_.getHtmlTableRowText("Go to <a href = 'webserial'>sensor monitoring</a> page.").c_str();
+    content_ += fp_.getHtmlTableRowText("<a href = 'setruntime'>Set state of charge</a>").c_str();
+    content_ += fp_.getHtmlTableRowText("<a href = 'stats'>Statistics</a>").c_str();
+	content_ += fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>").c_str();
+    content_ += fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>").c_str();
 	
     content_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)).c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
@@ -583,11 +584,10 @@ void handleStatistics(AsyncWebServerRequest* request) {
     content_ += fp_.addNewLine(2).c_str();
 
     content_ += fp_.getHtmlTable().c_str();
-    content_ += fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data.").c_str();
-    content_ += fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration.").c_str();
-    content_ += fp_.getHtmlTableRowText("Go to <a href = 'webserial'>sensor monitoring</a> page.").c_str();
+    content_ += fp_.getHtmlTableRowText("<a href = '\'>Main page</a>").c_str();
+    content_ += fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>").c_str();
+    content_ += fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>").c_str();
 
-    content_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)).c_str();
     content_ += fp_.getHtmlTableEnd().c_str();
 
     content_ += fp_.getHtmlTableColEnd().c_str();
