@@ -64,6 +64,7 @@ void onSetSoc(AsyncWebServerRequest* request);
 void onProgress(size_t prg, size_t sz);
 void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
+void handleStatistics(AsyncWebServerRequest* request);
 void convertParams();
 bool connectAp(const char* apName, const char* password);
 void connectWifi(const char* ssid, const char* password);
@@ -218,6 +219,7 @@ void wifiSetup() {
 
     // -- Set up required URL handlers on the web server.
     server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) { handleRoot(request); });
+    server.on("/stats", HTTP_GET, [](AsyncWebServerRequest* request) { handleStatistics(request); });
     server.on("/config", HTTP_ANY, [](AsyncWebServerRequest* request) {
             AsyncWebRequestWrapper asyncWebRequestWrapper(request);
             iotWebConf.handleConfig(&asyncWebRequestWrapper);
@@ -351,14 +353,42 @@ void handleData(AsyncWebServerRequest* request) {
 	json_["capacity"] = gCapacityAh;
 	json_["chargeEfficiency"] = gChargeEfficiencyPercent;
 	json_["minSoc"] = gMinPercent;
-	json_["tailCurrent"] = String((gTailCurrentmA / 1000), 3);
-    json_["fullVoltage"] = String((gFullVoltagemV / 1000), 2);
+	json_["tailCurrent"] = String((gTailCurrentmA / 1000.00f), 3);
+    json_["fullVoltage"] = String((gFullVoltagemV / 1000.00f), 2);
 	json_["fullDelay"] = gFullDelayS;
 	json_["currentThreshold"] = String(gCurrentThreshold, 3);
 	json_["shuntResistance"] = gShuntResistanceR;
 	json_["maxCurrent"] = gMaxCurrentA;
 	json_["voltageCalibrationFactor"] = gVoltageCalibrationFactor;
 	json_["currentCalibrationFactor"] = gCurrentCalibrationFactor;
+
+    Statistics stats_ = gBattery.statistics();
+
+    json_["consumedAh"] = String(stats_.consumedAs / 3600.00f, 3); // Ah
+    json_["consumedAs"] = String(stats_.consumedAs, 2); //As
+    json_["deepestDischarge"] = String(stats_.deepestDischarge / 1000.00f, 3); // Ah
+    json_["lastDischarge"] = String(stats_.lastDischarge / 1000.00f, 3); // Ah
+    json_["averageDischarge"] = String(stats_.averageDischarge / 1000.00f, 3); //Ah
+    json_["numChargeCycles"] = stats_.numChargeCycles;
+    json_["numFullDischarge"] = stats_.numFullDischarge;
+    json_["sumApHDrawn"] = stats_.sumApHDrawn;  //Ah
+    json_["minBatVoltage"] = String(stats_.minBatVoltage / 1000.00f, 2); // V
+    json_["maxBatVoltage"] = String(stats_.maxBatVoltage / 1000.00f, 2); // V
+
+    std::string _hours2 = std::to_string(gBattery.tTg() / 3600);
+    std::string _minutes2 = std::to_string((gBattery.tTg() % 3600) / 60);
+    _minutes2.insert(0, 2 - _minutes2.length(), '0');
+    _hours2.insert(0, 2 - _hours2.length(), '0');
+    json_["TimeSinceLastFull"] = _hours2 + ":" + _minutes2.c_str();
+    json_["secsSinceLastFull"] = stats_.secsSinceLastFull;
+
+    json_["numAutoSyncs"] = stats_.numAutoSyncs;
+    json_["numLowVoltageAlarms"] = stats_.numLowVoltageAlarms;
+    json_["numHighVoltageAlarms"] = stats_.numHighVoltageAlarms;
+    json_["amountDischargedEnergy"] = String(stats_.amountDischargedEnergy, 3); //kWh
+    json_["amountChargedEnergy"] = String(stats_.amountChargedEnergy, 3); // kWh
+    json_["deepestTemperatur"] = String(stats_.deepestTemperatur, 2); //°C
+    json_["highestTemperatur"] = String(stats_.highestTemperatur, 2); //°C
 
     response->setLength();
 	request->send(response);
@@ -464,6 +494,106 @@ void handleRoot(AsyncWebServerRequest* request) {
     content_ += fp_.getHtmlTableRowEnd().c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlEnd().c_str();
+
+    AsyncWebServerResponse* response = request->beginChunkedResponse("text/html", [content_](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
+
+        std::string chunk_ = "";
+        size_t len_ = min(content_.length() - index, maxLen);
+        if (len_ > 0) {
+            chunk_ = content_.substr(index, len_);
+            chunk_.copy((char*)buffer, chunk_.length());
+        }
+        if (index + len_ <= content_.length())
+            return chunk_.length();
+        else
+            return 0;
+
+        });
+    response->setContentLength(content_.length());
+    response->addHeader("Server", "ESP Async Web Server");
+    request->send(response);
+}
+
+
+class MyHtmlRootFormatProviderStatistics : public HtmlRootFormatProvider {
+protected:
+    virtual String getScriptInner() {
+        String _s = HtmlRootFormatProvider::getScriptInner();
+        _s.replace("{millisecond}", "5000");
+        _s += F("function updateData(jsonData) {\n");
+        _s += F("   document.getElementById('minBatVoltage').innerHTML = jsonData.minBatVoltage + \"V\" \n");
+        _s += F("   document.getElementById('maxBatVoltage').innerHTML = jsonData.maxBatVoltage + \"V\" \n");
+
+        _s += F("   document.getElementById('amountDischargedEnergy').innerHTML = jsonData.amountDischargedEnergy + \"kWh\" \n");
+        _s += F("   document.getElementById('amountChargedEnergy').innerHTML = jsonData.amountChargedEnergy + \"kWh\" \n");
+
+        _s += F("   document.getElementById('consumedAh').innerHTML = jsonData.consumedAh + \"kWh\" \n");
+        _s += F("   document.getElementById('averageDischarge').innerHTML = jsonData.averageDischarge + \"Ah\" \n");
+        _s += F("   document.getElementById('deepestDischarge').innerHTML = jsonData.deepestDischarge + \"Ah\" \n");
+        _s += F("   document.getElementById('lastDischarge').innerHTML = jsonData.lastDischarge + \"Ah\" \n");
+
+        _s += F("   document.getElementById('deepestTemperatur').innerHTML = jsonData.deepestTemperatur + \"&deg;C\" \n");
+        _s += F("   document.getElementById('highestTemperatur').innerHTML = jsonData.highestTemperatur + \"&deg;C\" \n");
+        _s += F("   document.getElementById('TimeSinceLastFull').innerHTML = jsonData.TimeSinceLastFull + \"h\" \n");
+
+        _s += F("   document.getElementById('numChargeCycles').innerHTML = jsonData.numChargeCycles \n");
+        _s += F("   document.getElementById('numAutoSyncs').innerHTML = jsonData.numAutoSyncs \n");
+
+        _s += F("}\n");
+
+        return _s;
+    }
+};
+
+void handleStatistics(AsyncWebServerRequest* request) {
+    std::string content_;
+    MyHtmlRootFormatProviderStatistics fp_;
+
+    content_ += fp_.getHtmlHead(iotWebConf.getThingName()).c_str();
+    content_ += fp_.getHtmlStyle().c_str();
+    content_ += fp_.getHtmlHeadEnd().c_str();
+    content_ += fp_.getHtmlScript().c_str();
+    content_ += fp_.getHtmlTable().c_str();
+    content_ += fp_.getHtmlTableRow().c_str();
+    content_ += fp_.getHtmlTableCol().c_str();
+
+    content_ += fp_.getHtmlFieldset("Statistics").c_str();
+    content_ += fp_.getHtmlTable().c_str();
+
+    content_ += fp_.getHtmlTableRowSpan("min Volt: ", "no data", "minBatVoltage").c_str();
+    content_ += fp_.getHtmlTableRowSpan("max Volt: ", "no data", "maxBatVoltage").c_str();
+
+    content_ += fp_.getHtmlTableRowSpan("Consumed Ah: ", "no data", "consumedAh").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Avg. discharged energy:", "no data", "averageDischarge").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge").c_str();
+
+    content_ += fp_.getHtmlTableRowSpan("min Temperatur: ", "no data", "deepestTemperatur").c_str();
+    content_ += fp_.getHtmlTableRowSpan("max Temperatur: ", "no data", "highestTemperatur").c_str();
+
+    content_ += fp_.getHtmlTableRowSpan("Charge cycles: ", "no data", "numChargeCycles").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Auto syncs: ", "no data", "numAutoSyncs").c_str();
+    content_ += fp_.getHtmlTableRowSpan("Time since last full:", "no data", "TimeSinceLastFull").c_str();
+
+    content_ += fp_.getHtmlTableEnd().c_str();
+    content_ += fp_.getHtmlFieldsetEnd().c_str();
+
+    content_ += fp_.addNewLine(2).c_str();
+
+    content_ += fp_.getHtmlTable().c_str();
+    content_ += fp_.getHtmlTableRowText("Go to <a href = 'setruntime'>runtime modification page</a> to change runtime data.").c_str();
+    content_ += fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration.").c_str();
+    content_ += fp_.getHtmlTableRowText("Go to <a href = 'webserial'>sensor monitoring</a> page.").c_str();
+
+    content_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)).c_str();
+    content_ += fp_.getHtmlTableEnd().c_str();
+
+    content_ += fp_.getHtmlTableColEnd().c_str();
+    content_ += fp_.getHtmlTableRowEnd().c_str();
+    content_ += fp_.getHtmlTableEnd().c_str();
+    content_ += fp_.getHtmlEnd().c_str();
 
     AsyncWebServerResponse* response = request->beginChunkedResponse("text/html", [content_](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
 

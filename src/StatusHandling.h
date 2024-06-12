@@ -18,23 +18,23 @@ struct Statistics {
     float remainAs;
     unsigned int tTgVal;  // Time to go in seconds
     // Here the statistics start
-    float consumedAs;
-    unsigned int deepestDischarge;
-    unsigned int lastDischarge;
-    unsigned int averageDischarge;
+    float consumedAs; // As
+    unsigned int deepestDischarge; // mAh
+    unsigned int lastDischarge; // mAh
+    unsigned int averageDischarge; // mAh
     unsigned int numChargeCycles;
     unsigned int numFullDischarge;
-    float sumApHDrawn;
-    unsigned int minBatVoltage;
-    unsigned int maxBatVoltage;
-    int secsSinceLastFull;
+    float sumApHDrawn; // Ah
+    unsigned int minBatVoltage; // mV
+    unsigned int maxBatVoltage; // mv
+    int secsSinceLastFull; // s
     unsigned int numAutoSyncs;
     unsigned int numLowVoltageAlarms;
     unsigned int numHighVoltageAlarms;
-    float amountDischargedEnergy;
-    float amountChargedEnergy;
-    float deepestTemperatur;
-    float highestTemperatur;
+    float amountDischargedEnergy; // kWh
+    float amountChargedEnergy; // kWh
+    float deepestTemperatur; // °C
+    float highestTemperatur; // °C
 };
 
 
