@@ -584,7 +584,7 @@ void handleStatistics(AsyncWebServerRequest* request) {
     content_ += fp_.addNewLine(2).c_str();
 
     content_ += fp_.getHtmlTable().c_str();
-    content_ += fp_.getHtmlTableRowText("<a href = '\'>Main page</a>").c_str();
+    content_ += fp_.getHtmlTableRowText("<a href='/'>Main page</a>").c_str();
     content_ += fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>").c_str();
     content_ += fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>").c_str();
 
