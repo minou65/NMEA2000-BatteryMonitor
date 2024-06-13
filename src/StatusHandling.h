@@ -102,6 +102,8 @@ public:
         float minAs; // Amount of As that are in the battery when we assume it to be empty
         unsigned long fullDelay; // For how long do we need Full Voltage and current < tailCurrent to assume battery is full
 
+        bool isCharging = false;
+
         float lastVoltage;
         float lastCurrent;   
         float lastTemperature;     

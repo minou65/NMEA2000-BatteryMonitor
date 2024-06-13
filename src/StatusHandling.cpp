@@ -120,10 +120,15 @@ void BatteryStatus::updateTtG() {
             _tTgVal = 359940;
         }
         stats.tTgVal = _tTgVal;
+        isCharging = false;
     }  else if (_avgCurrent == 0.0){
 
     } else {
 		stats.tTgVal = 0;
+        if (!isCharging) {
+            isCharging = true;
+            stats.numChargeCycles++;
+        }
 	}
 
 
@@ -286,7 +291,7 @@ void BatteryStatus::updateStats(unsigned long now) {
         stats.maxBatVoltage = voltageV;
     }   
 
-    if ((stats.deepestTemperatur > lastTemperature) || (stats.deepestTemperatur == -127.00)) {
+    if ((stats.deepestTemperatur > lastTemperature) || (stats.deepestTemperatur == -127.00) || (stats.deepestTemperatur == 0.00)) {
         stats.deepestTemperatur = lastTemperature;
     }
     if (stats.highestTemperatur < lastTemperature) {
