@@ -11,6 +11,9 @@ struct Statistics {
         memset(this, 0, sizeof(*this));
         secsSinceLastFull = -1;
         minBatVoltage = INT32_MAX;
+        lastDischarge = INT32_MAX;
+        deepestDischarge = INT32_MAX;
+
     }
     const uint32_t magic = MAGICKEY;
     // The following values are the main values we want
@@ -84,16 +87,18 @@ public:
 	}
 
     void setBatterySoc(float val);
+    void resetStats();
+    void writeStats();
+    bool readStats();
     const Statistics& statistics() {return stats;}
 
     protected:                
         float getAverageConsumption();
         // This is called when we become synced for the first time;
-        void resetStats();
-        void writeStatusToRTC();
-        bool readStatusFromRTC();
-        void writeStatusToPrefernces();
-        bool readStatusFromPreferences();
+        void setDeepestDischarge();
+        void writeStatsToRTC();
+        bool readStatsFromRTC();
+
         RingBuf<float, GlidingAverageWindow> currentValues;
         float batteryCapacity;
         float chargeEfficiency; // Value between 0 and 1 (representing percent)       
@@ -109,7 +114,6 @@ public:
         float lastTemperature;     
         unsigned long fullReachedAt;        
         float glidingAverageCurrent;
-        float lastSoc;
         unsigned long lasStatUpdate;
         bool isSynced;
         Statistics stats;

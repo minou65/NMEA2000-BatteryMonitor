@@ -61,6 +61,7 @@
 // -- Method declarations.
 void handleSetRuntime(AsyncWebServerRequest* request);
 void onSetSoc(AsyncWebServerRequest* request);
+void onResetStatistics(AsyncWebServerRequest* request);
 void onProgress(size_t prg, size_t sz);
 void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
@@ -231,11 +232,15 @@ void wifiSetup() {
         }
     );
     server.on("/setruntime", HTTP_GET, [](AsyncWebServerRequest* request) { 
-        handleSetRuntime(request); 
+            handleSetRuntime(request); 
         }
     );
     server.on("/setsoc", HTTP_POST, [](AsyncWebServerRequest* request) { 
-        onSetSoc(request); 
+            onSetSoc(request); 
+        }
+    );
+    server.on("/resetstats", HTTP_POST, [](AsyncWebServerRequest* request) {
+            onResetStatistics(request);
         }
     );
     server.on("/data", HTTP_GET, [](AsyncWebServerRequest* request) { handleData(request); });
@@ -300,6 +305,11 @@ void onSetSoc(AsyncWebServerRequest* request) {
         gBattery.setBatterySoc(_socVal);
     }
 
+    request->send(200, "text/html", SOC_RESPONSE);
+}
+
+void onResetStatistics(AsyncWebServerRequest* request) {
+    gBattery.resetStats();
     request->send(200, "text/html", SOC_RESPONSE);
 }
 
@@ -377,9 +387,11 @@ void handleData(AsyncWebServerRequest* request) {
 
     std::string _hours2 = std::to_string(stats_.secsSinceLastFull / 3600);
     std::string _minutes2 = std::to_string((stats_.secsSinceLastFull % 3600) / 60);
+    std::string _seconds2 = std::to_string(stats_.secsSinceLastFull % 60);
     _minutes2.insert(0, 2 - _minutes2.length(), '0');
     _hours2.insert(0, 2 - _hours2.length(), '0');
-    json_["TimeSinceLastFull"] = _hours2 + ":" + _minutes2.c_str();
+    _seconds2.insert(0, 2 - _seconds2.length(), '0');
+    json_["TimeSinceLastFull"] = _hours2 + ":" + _minutes2 + ":" + _seconds2.c_str();
     json_["secsSinceLastFull"] = stats_.secsSinceLastFull;
 
     json_["numAutoSyncs"] = stats_.numAutoSyncs;
@@ -528,14 +540,14 @@ protected:
         _s += F("   document.getElementById('amountDischargedEnergy').innerHTML = jsonData.amountDischargedEnergy + \"kWh\" \n");
         _s += F("   document.getElementById('amountChargedEnergy').innerHTML = jsonData.amountChargedEnergy + \"kWh\" \n");
 
-        _s += F("   document.getElementById('consumedAh').innerHTML = jsonData.consumedAh + \"kWh\" \n");
-        _s += F("   document.getElementById('averageDischarge').innerHTML = jsonData.averageDischarge + \"Ah\" \n");
+        //_s += F("   document.getElementById('consumedAh').innerHTML = jsonData.consumedAh + \"Ah\" \n");
+        //_s += F("   document.getElementById('averageDischarge').innerHTML = jsonData.averageDischarge + \"Ah\" \n");
         _s += F("   document.getElementById('deepestDischarge').innerHTML = jsonData.deepestDischarge + \"Ah\" \n");
         _s += F("   document.getElementById('lastDischarge').innerHTML = jsonData.lastDischarge + \"Ah\" \n");
 
         _s += F("   document.getElementById('deepestTemperatur').innerHTML = jsonData.deepestTemperatur + \"&deg;C\" \n");
         _s += F("   document.getElementById('highestTemperatur').innerHTML = jsonData.highestTemperatur + \"&deg;C\" \n");
-        _s += F("   document.getElementById('TimeSinceLastFull').innerHTML = jsonData.TimeSinceLastFull + \"h\" \n");
+        _s += F("   document.getElementById('TimeSinceLastFull').innerHTML = jsonData.TimeSinceLastFull\n");
 
         _s += F("   document.getElementById('numChargeCycles').innerHTML = jsonData.numChargeCycles \n");
         _s += F("   document.getElementById('numAutoSyncs').innerHTML = jsonData.numAutoSyncs \n");
@@ -564,10 +576,10 @@ void handleStatistics(AsyncWebServerRequest* request) {
     content_ += fp_.getHtmlTableRowSpan("min Volt: ", "no data", "minBatVoltage").c_str();
     content_ += fp_.getHtmlTableRowSpan("max Volt: ", "no data", "maxBatVoltage").c_str();
 
-    content_ += fp_.getHtmlTableRowSpan("Consumed Ah: ", "no data", "consumedAh").c_str();
+    //content_ += fp_.getHtmlTableRowSpan("Consumed Ah: ", "no data", "consumedAh").c_str();
     content_ += fp_.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy").c_str();
     content_ += fp_.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy").c_str();
-    content_ += fp_.getHtmlTableRowSpan("Avg. discharged energy:", "no data", "averageDischarge").c_str();
+   // content_ += fp_.getHtmlTableRowSpan("Avg. discharged energy:", "no data", "averageDischarge").c_str();
     content_ += fp_.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge").c_str();
     content_ += fp_.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge").c_str();
 
@@ -582,6 +594,8 @@ void handleStatistics(AsyncWebServerRequest* request) {
     content_ += fp_.getHtmlFieldsetEnd().c_str();
 
     content_ += fp_.addNewLine(2).c_str();
+
+    content_ += "<form action = '/resetstats' method = 'get'><button type = 'submit'>Reset statistics</button></form></br>";
 
     content_ += fp_.getHtmlTable().c_str();
     content_ += fp_.getHtmlTableRowText("<a href='/'>Main page</a>").c_str();

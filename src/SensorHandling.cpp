@@ -42,6 +42,7 @@ bool updateSensorConfig = true;
 static INA226 ina(Wire);
 Neotimer statisticsTimer = Neotimer(1000);
 Neotimer outputTimer = Neotimer(15000);
+Neotimer statsTimer = Neotimer(5 * 60 * 1000); // 5 minutes
 
 IRAM_ATTR void alert(void) { ++alertCounter; }
 
@@ -132,6 +133,7 @@ void setupSensor() {
     gSensorInitialized = ina.begin();
 	statisticsTimer.start();
     outputTimer.start();
+    statsTimer.start();
 
     // Check if the connection was successful, stop if not
     if (!gSensorInitialized) {
@@ -220,6 +222,10 @@ void sensorLoop() {
 
     while (alertCounter && ina.isConversionReady()) { 
         updateAhCounter();
+    }
+
+    if (statsTimer.repeat()) {
+        gBattery.writeStats();
     }
 
 	if (statisticsTimer.repeat()) {

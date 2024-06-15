@@ -11,7 +11,6 @@ BatteryStatus gBattery;
 BatteryStatus::BatteryStatus() {
     lastCurrent = 0;
     fullReachedAt = 0;
-    lastSoc = 0;
     glidingAverageCurrent = 0;
     lasStatUpdate = 0;
     lastTemperature = 0;
@@ -21,12 +20,12 @@ BatteryStatus::BatteryStatus() {
 void BatteryStatus::begin() {
 	lastCurrent = 0;
 	fullReachedAt = 0;
-	lastSoc = 0;
 	glidingAverageCurrent = 0;
 	lasStatUpdate = 0;
 	lastTemperature = 0;
 	isSynced = false;
-    if (!readStatusFromPreferences()) {
+
+    if (!readStats()) {
 		stats.init();
         Serial.println("BatteryStatus::begin: No data found, loading default");
 	} else {
@@ -46,6 +45,8 @@ void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiency
         if (gCurrentCalibrationFactor < 0) {
             tailCurrent = tailCurrent * -1;
         }
+
+
 
         Serial.println("BatteryStatus::setParameters");
         Serial.printf("    capacityAh: %d\n", capacityAh);
@@ -96,12 +97,6 @@ void BatteryStatus::updateSOC() {
     //Serial.printf("    batteryCapacity: %.3f\n", batteryCapacity);
     //Serial.printf("    fabs: %.3f\n", fabs(lastSoc - stats.socVal));
    
-    if (fabs(lastSoc - stats.socVal) >= .005) {
-        // Store value in RTC memory
-        writeStatusToRTC();
-        writeStatusToPrefernces();
-        lastSoc = stats.socVal;
-    }
 }
 
 void BatteryStatus::updateTtG() {
@@ -228,7 +223,7 @@ bool BatteryStatus::checkFull() {
                 // And here we are. 100 %
                 setBatterySoc(1.0);
                 if (!isSynced) {
-                    resetStats();
+                    setDeepestDischarge();
                     isSynced = true;
                 }
                 stats.secsSinceLastFull = 0;
@@ -252,13 +247,35 @@ void BatteryStatus::setBatterySoc(float val) {
     stats.remainAs = batteryCapacity * val;
     if(val >= 1.0) {
         fullReachedAt = millis();
+        stats.secsSinceLastFull = 0;
     }
     updateTtG();
-    writeStatusToPrefernces();
+    writeStats();
+}
+
+void BatteryStatus::setDeepestDischarge() {
+   // stats.deepestDischarge = stats.remainAs / 3.6;
 }
 
 void BatteryStatus::resetStats() {
-    stats.deepestDischarge = stats.remainAs / 3.6;
+    stats.amountChargedEnergy = 0;
+    stats.amountDischargedEnergy = 0;
+    stats.minBatVoltage = INT32_MAX;
+    stats.maxBatVoltage = 0;
+    stats.lastDischarge = INT32_MAX;
+    stats.deepestDischarge = INT32_MAX;
+    stats.averageDischarge = 0;
+
+    stats.consumedAs = 0;
+    stats.numChargeCycles = 0;
+    stats.numFullDischarge = 0;
+    stats.sumApHDrawn = 0;
+    stats.numAutoSyncs = 0;
+    stats.numLowVoltageAlarms = 0;
+    stats.numHighVoltageAlarms = 0;
+    stats.deepestTemperatur = INT32_MAX;
+    stats.highestTemperatur = 0;
+
 }
 
 void BatteryStatus::updateStats(unsigned long now) {
@@ -272,15 +289,19 @@ void BatteryStatus::updateStats(unsigned long now) {
         stats.secsSinceLastFull += timeDeltaSec;
     }
 
-
     if (stats.tTgVal != INFINITY) {
-        float mAh = stats.consumedAs / 3.6;
-        if (stats.deepestDischarge > mAh) {
-            stats.deepestDischarge = roundf(mAh);
+        unsigned int _mAh = stats.remainAs / 3.6;
+
+        if ((_mAh > 0) && (stats.deepestDischarge > _mAh)) {
+            stats.deepestDischarge = _mAh;
         }
-        
-        stats.lastDischarge = roundf(mAh);
+        else if (stats.deepestDischarge == 0) {
+            stats.deepestDischarge = _mAh;
+        }
+
+        stats.lastDischarge = _mAh;
         stats.averageDischarge = stats.lastDischarge;
+
     }
 
     uint32_t voltageV = lastVoltage * 1000;
@@ -302,11 +323,11 @@ void BatteryStatus::updateStats(unsigned long now) {
 #ifdef ESP32
 RTC_DATA_ATTR Statistics rtcStats;
 
-void BatteryStatus::writeStatusToRTC() {
+void BatteryStatus::writeStatsToRTC() {
     memcpy(&rtcStats, &stats, sizeof(stats));
 }
 
-bool BatteryStatus::readStatusFromRTC() {
+bool BatteryStatus::readStatsFromRTC() {
     bool res = true;
     if (rtcStats.magic == MAGICKEY) {
          memcpy(&stats, &rtcStats, sizeof(stats));
@@ -316,14 +337,14 @@ bool BatteryStatus::readStatusFromRTC() {
     return res;
 }
 
-void BatteryStatus::writeStatusToPrefernces() {
+void BatteryStatus::writeStats() {
 	Preferences preferences;
 	preferences.begin("BatteryMonitor", false);
 	preferences.putBytes("stats", &stats, sizeof(stats));
 	preferences.end();
 }
 
-bool BatteryStatus::readStatusFromPreferences() {
+bool BatteryStatus::readStats() {
 	bool res = true;
 	Preferences preferences;
 	preferences.begin("BatteryMonitor", true);
@@ -335,11 +356,11 @@ bool BatteryStatus::readStatusFromPreferences() {
 }
 
 #else 
-void BatteryStatus::writeStatusToRTC() {
+void BatteryStatus::writeStatsToRTC() {
     ESP.rtcUserMemoryWrite(0, (uint32_t*)&stats, sizeof(stats));
 }
 
-bool BatteryStatus::readStatusFromRTC() {
+bool BatteryStatus::readStatsFromRTC() {
     uint32_t magic = 0;
     if (!ESP.rtcUserMemoryRead(0, &magic, sizeof(magic)) || magic != MAGICKEY) {
         return false;
@@ -353,10 +374,10 @@ bool BatteryStatus::readStatusFromRTC() {
     return true;
 }
 
-void BatteryStatus::writeStatusToPrefernces() {
+void BatteryStatus::writeStats() {
 }
 
-bool BatteryStatus::readStatusFromPreferences() {
+bool BatteryStatus::readStats() {
     return false;
 }
 
