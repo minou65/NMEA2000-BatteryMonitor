@@ -11,6 +11,7 @@
 	- [NMEA 2000](#nmea-2000)
 	- [Librarys](#librarys)
 	- [Required hardware](#required-hardware)
+		- [Shunt housing](#shunt-housing)
 	- [Running values](#running-values)
 		- [Battery voltage](#battery-voltage)
 		- [Current](#current)
@@ -19,6 +20,7 @@
 		- [Time to go (Ttg)](#time-to-go-ttg)
 		- [Battery full](#battery-full)
 		- [Temperature](#temperature)
+	- [Statistics](#statistics)
 	- [Configuration](#configuration)
 		- [NEMA](#nema)
 			- [Instance](#instance)
@@ -112,6 +114,11 @@ There are plenty of options out there. Make sure that you select a resistor appr
 If you have a 48V System, be aware of the fact that the INA226 does only support voltages up to 36V (40V max). You need a voltage divider to make shure your sensor is not destroyed. 
 The code assumes that you use a __470KOhm and a 1MOhm__ resistor, measuring across the 1MOhm towards GND. `( + --470K-- --1M -- GND )` The smaller you choose the small resistor in comparison to the bigger one, the more accurate the measurement will be.
 
+### Shunt housing
+In the stl folder you will find a housing for the shunt.
+
+<img src="stl/shunthousing.png" width="400" alt="housing">
+
 ## Running values
 ### Battery voltage
 
@@ -127,7 +134,7 @@ Shows the charge level of the battery. This is calculated based on the capacity 
 
 If no shunt is used and the current calibration factor is set to 0, the following table is used to calculate the Soc
 
-![alt text](img/Ladezustand_60be.jpg)
+<img src="img/Ladezustand_60be.jpg" width="300" alt="ladezustand">
 
 ### Time to go (Ttg)
 If the time is 00:00, then the battery is charging. Otherwise, it will display an estimate in hours and minutes of how long, based on the current consumption, it will take until the battery is empty.
@@ -136,6 +143,10 @@ If the time is 00:00, then the battery is charging. Otherwise, it will display a
 true or false
 
 ### Temperature
+
+## Statistics
+
+<img src="img/statistics.jpeg" width="300" alt="statistics">
 
 
 ## Configuration
