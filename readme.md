@@ -117,12 +117,11 @@ The Software has been created using Visual Studio with the addon Visual Micro. I
 | X2 | AKL 057-02 | Reichelt |
 | X3 | PSS 254/3G | Reichelt |
 
-
 __Before you can use the sensor board you have to remove the shunt resistor soldered to that board and instead use a bigger shunt, e.g. a 100A/75mV.__
-Make sure that the shunt supports the current your system produces. You can set the parameters of the shunt in the web interface.
-A wide variety of shunts can be found on EBay or other platforms.
 
-You also need a __shunt__, since the small resistor on the board (dont forget to remove it!) will not survive the high currents.
+<img src="img/ina226.png" width="200" alt="ina226">
+
+You also need a __shunt__, since the small resistor on the board (__dont forget to remove it!__) will not survive the high currents.
 There are plenty of options out there. Make sure that you select a resistor appropriate for the currents you expect. I'm using a 100A/75mV shunt.
 
 If you have a 48V System, be aware of the fact that the INA226 does only support voltages up to 36V (40V max). You need a voltage divider to make shure your sensor is not destroyed. 
