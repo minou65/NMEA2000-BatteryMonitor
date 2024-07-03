@@ -16,6 +16,7 @@
 #include "webHandling.h"
 #include "statusHandling.h"
 #include "favicon.h"
+#include "neotimer.h"
 
 #include <DNSServer.h>
 #include <IotWebConf.h>
@@ -77,10 +78,12 @@ DNSServer dnsServer;
 AsyncWebServer server(80);
 AsyncWebServerWrapper asyncWebServerWrapper(&server);
 AsyncUpdateServer AsyncUpdater;
+Neotimer APModeTimer = Neotimer();
 
 bool gParamsChanged = true;
 bool gSaveParams = false;
 bool startAPMode = true;
+uint8_t APModeOfflineTime = 0;
 
 uint16_t gCapacityAh;
 uint16_t gChargeEfficiencyPercent;
@@ -103,6 +106,9 @@ NMEAConfig Config = NMEAConfig();
 
 char APModeValue[STRING_LEN];
 iotwebconf::CheckboxParameter APModeParam = iotwebconf::CheckboxParameter("start AP only at boot sequence", "APModeID", APModeValue, STRING_LEN, false);
+
+char APModeOfflineValue[STRING_LEN];
+iotwebconf::NumberParameter APModeOfflineParam = iotwebconf::NumberParameter("AP offline mode after (minutes)", "APModeOffline", APModeOfflineValue, NUMBER_LEN, "0", "0..30", "min='0' max='30', step='1'");
 
 char maxCurrentValue[NUMBER_LEN];
 char VoltageCalibrationFactorValue[NUMBER_LEN];
@@ -200,6 +206,7 @@ void wifiSetup() {
     iotWebConf.addParameterGroup(&fullGroup);
 
     iotWebConf.addSystemParameter(&APModeParam);
+    iotWebConf.addSystemParameter(&APModeOfflineParam);
 
     iotWebConf.setupUpdateServer(
         [](const char* updatePath) { AsyncUpdater.setup(&server, updatePath, onProgress); },
@@ -262,27 +269,37 @@ void wifiSetup() {
     );
 
     WebSerial.begin(&server, "/webserial");
+
+    if (APModeOfflineTime > 0) {
+        APModeTimer.start(APModeOfflineTime * 60 * 1000);
+    }
 }
 
 void wifiLoop() {
-  // -- doLoop should be called as frequently as possible.
-  iotWebConf.doLoop();
-  ArduinoOTA.handle();
+      // -- doLoop should be called as frequently as possible.
+      iotWebConf.doLoop();
+      ArduinoOTA.handle();
 
-  if (gSaveParams) {
-      Serial.println(F("Parameters are changed,save them"));
+    if (gSaveParams) {
+        Serial.println(F("Parameters are changed,save them"));
 
-      Config.SetSource(gN2KSource);
+        Config.SetSource(gN2KSource);
 
-      iotWebConf.saveConfig();
-      gSaveParams = false;
-  }
+        iotWebConf.saveConfig();
+        gSaveParams = false;
+    }
 
-  if ((iotWebConf.getState() == iotwebconf::OnLine) && (APModeParam.isChecked()) && startAPMode) {
-	  Serial.println(F("start AP mode only at boot sequence"));
-	  startAPMode = false;
-  }
+    if ((iotWebConf.getState() == iotwebconf::OnLine) && (APModeParam.isChecked()) && startAPMode) {
+	    Serial.println(F("start AP mode only at boot sequence"));
+	    startAPMode = false;
+    }
 
+    if (APModeTimer.done()) {
+		Serial.println(F("AP mode offline time reached"));
+		iotWebConf.goOffLine();
+		APModeTimer.stop();
+	}
+    
 
 }
 
@@ -653,6 +670,8 @@ void convertParams() {
     gN2KSource = Config.Source();
     gN2KSID = Config.SID();
     gN2KInstance = Config.Instance();
+
+    APModeOfflineTime = atoi(APModeOfflineValue);
 }
 
 void configSaved(){ 
