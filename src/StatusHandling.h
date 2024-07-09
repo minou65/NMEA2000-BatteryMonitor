@@ -34,8 +34,8 @@ struct Statistics {
     unsigned int numAutoSyncs;
     unsigned int numLowVoltageAlarms;
     unsigned int numHighVoltageAlarms;
-    float amountDischargedEnergy; // kWh
-    float amountChargedEnergy; // kWh
+    double amountDischargedEnergy; // kWh
+    double amountChargedEnergy; // kWh
     float deepestTemperatur; // °C
     float highestTemperatur; // °C
 };

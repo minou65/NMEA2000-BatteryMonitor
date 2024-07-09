@@ -5,6 +5,8 @@
 #include <Preferences.h>
 #endif
 
+const double MAX_FLOAT = 3.4E+38; // nax value for float
+const double MIN_FLOAT = -3.4E+38; // min value forfloat
 
 BatteryStatus gBattery;
 
@@ -135,9 +137,9 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
 
     for (int i = 0; i < numPeriods; ++i) {
         if (currentValues.isFull()) {
-            float oldVal;
-            currentValues.pop(oldVal);
-            glidingAverageCurrent += oldVal;
+            float _oldVal;
+            currentValues.pop(_oldVal);
+            glidingAverageCurrent += _oldVal;
         }
         currentValues.push(current);
         // Assumtion: Consumption is negative
@@ -152,15 +154,36 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
     _periodConsumption = (lastCurrent + current) / 2.0 * period * numPeriods;
 
     // Has to be in 0.01 kWh....
-    float consumption = _periodConsumption / 3.6 / 1000.0 / 10.0 * lastVoltage;
+    double _consumption = _periodConsumption / 3.6 / 1000.0 / 10.0 * lastVoltage;
     if (_periodConsumption > 0) {
         // We are charging
-        stats.amountChargedEnergy += consumption;
-        _periodConsumption *= chargeEfficiency;
+        // Verify that we don't have an overflow
+        if (stats.amountChargedEnergy <= MAX_FLOAT - _consumption) {
+            stats.amountChargedEnergy += _consumption;
+        }
+        else {
+            stats.amountChargedEnergy = 0;
+        }
     }
     else {
-        stats.sumApHDrawn += _periodConsumption / -3.6;
-        stats.amountDischargedEnergy -= consumption;
+ 		// We are discharging
+
+        double _tempSumApHDrawn = _periodConsumption / -3.6;
+        if (stats.sumApHDrawn >= MIN_FLOAT + _tempSumApHDrawn) {
+            stats.sumApHDrawn += _tempSumApHDrawn;
+        }
+        else {
+            stats.sumApHDrawn = MIN_FLOAT;
+        }
+
+        // Verify that we don't have an overflow
+        if (stats.amountDischargedEnergy >= MAX_FLOAT + (_consumption * -1)) {
+            stats.amountDischargedEnergy += (_consumption * -1);
+        }
+        else {
+            stats.amountDischargedEnergy = 0;
+        }
+
     }
 
     //Serial.println("BatteryStatus::updateConsumption");
