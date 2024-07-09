@@ -5366,7 +5366,7 @@ Es handelt sich hierbei um AK500 in horizontaler Ausführung.&lt;p&gt;
 </class>
 </classes>
 <parts>
-<part name="ESP1" library="_esp32" deviceset="ESP32-NODEMCU" device="" value="ESP32 NodeMCU"/>
+<part name="ESP1" library="_esp32" deviceset="ESP32-NODEMCU" device="" value="ESP32 CH340C Ultra Low Power Core Typ-C"/>
 <part name="IC1" library="v-reg" library_urn="urn:adsk.eagle:library:409" deviceset="78XXS" device="" package3d_urn="urn:adsk.eagle:package:30342/1" value="R-78E05-1.0"/>
 <part name="IC3" library="_eigene" deviceset="MCP2562" device=""/>
 <part name="FRAME1" library="frames" library_urn="urn:adsk.eagle:library:229" deviceset="DINA4_L" device=""/>
@@ -5383,23 +5383,25 @@ Es handelt sich hierbei um AK500 in horizontaler Ausführung.&lt;p&gt;
 <plain>
 <text x="5.08" y="48.26" size="1.778" layer="97">CANL = blau
 CANH = weiss</text>
-<text x="2.54" y="147.32" size="1.778" layer="97">Battery -</text>
-<text x="2.54" y="132.08" size="1.778" layer="97">To Load</text>
-<text x="2.54" y="160.02" size="1.778" layer="97">Battery +</text>
+<text x="11.684" y="145.542" size="1.778" layer="97" rot="R180">Battery -</text>
+<text x="11.938" y="130.302" size="1.778" layer="97" rot="R180">To Load</text>
+<text x="11.938" y="158.496" size="1.778" layer="97" rot="R180">Battery +</text>
 <text x="255.016" y="5.842" size="5.08" layer="97">A</text>
+<text x="8.382" y="77.724" size="1.778" layer="97">+12V und GND vom NMEA Bus 
+dürfen nicht angeschlossen werden</text>
 </plain>
 <instances>
 <instance part="ESP1" gate="G$1" x="180.34" y="114.3" smashed="yes">
-<attribute name="VALUE" x="170.18" y="144.78" size="1.778" layer="96"/>
-<attribute name="NAME" x="170.18" y="147.32" size="1.778" layer="95"/>
+<attribute name="VALUE" x="167.64" y="83.82" size="1.778" layer="96"/>
+<attribute name="NAME" x="167.64" y="86.36" size="1.778" layer="95"/>
 </instance>
 <instance part="IC1" gate="1" x="78.74" y="93.98" smashed="yes">
 <attribute name="NAME" x="81.28" y="86.36" size="1.778" layer="95"/>
 <attribute name="VALUE" x="81.28" y="83.82" size="1.778" layer="96"/>
 </instance>
 <instance part="IC3" gate="G$1" x="81.28" y="68.58" smashed="yes" rot="R180">
-<attribute name="NAME" x="91.44" y="40.64" size="1.778" layer="95" rot="R180"/>
-<attribute name="VALUE" x="91.44" y="43.18" size="1.778" layer="96" rot="R180"/>
+<attribute name="NAME" x="73.66" y="43.18" size="1.778" layer="95"/>
+<attribute name="VALUE" x="73.66" y="40.64" size="1.778" layer="96"/>
 </instance>
 <instance part="FRAME1" gate="G$1" x="0" y="0" smashed="yes"/>
 <instance part="FRAME1" gate="G$2" x="162.56" y="0" smashed="yes">
@@ -5433,8 +5435,8 @@ CANH = weiss</text>
 <attribute name="NAME" x="48.26" y="94.4626" size="1.778" layer="95"/>
 <attribute name="VALUE" x="48.26" y="91.6686" size="1.778" layer="96"/>
 </instance>
-<instance part="X1" gate="-1" x="17.78" y="157.48" smashed="yes">
-<attribute name="NAME" x="16.51" y="158.369" size="1.778" layer="95" rot="R180"/>
+<instance part="X1" gate="-1" x="20.32" y="157.48" smashed="yes">
+<attribute name="NAME" x="19.05" y="158.369" size="1.778" layer="95" rot="R180"/>
 </instance>
 <instance part="X1" gate="-2" x="20.32" y="144.78" smashed="yes">
 <attribute name="NAME" x="19.05" y="145.669" size="1.778" layer="95" rot="R180"/>
@@ -5531,7 +5533,7 @@ CANH = weiss</text>
 <wire x1="73.66" y1="124.46" x2="40.64" y2="124.46" width="0.1524" layer="91"/>
 <pinref part="X1" gate="-1" pin="KL"/>
 <wire x1="40.64" y1="124.46" x2="40.64" y2="157.48" width="0.1524" layer="91"/>
-<wire x1="40.64" y1="157.48" x2="22.86" y2="157.48" width="0.1524" layer="91"/>
+<wire x1="40.64" y1="157.48" x2="25.4" y2="157.48" width="0.1524" layer="91"/>
 <pinref part="D1" gate="1" pin="A"/>
 <wire x1="43.18" y1="93.98" x2="40.64" y2="93.98" width="0.1524" layer="91"/>
 <wire x1="40.64" y1="93.98" x2="40.64" y2="124.46" width="0.1524" layer="91"/>
@@ -5646,6 +5648,14 @@ CANH = weiss</text>
 <pinref part="IC1" gate="1" pin="IN"/>
 <wire x1="71.12" y1="93.98" x2="48.26" y2="93.98" width="0.1524" layer="91"/>
 <pinref part="D1" gate="1" pin="C"/>
+</segment>
+</net>
+<net name="N$5" class="0">
+<segment>
+<wire x1="5.08" y1="76.2" x2="48.26" y2="76.2" width="0.1524" layer="91"/>
+<wire x1="48.26" y1="76.2" x2="48.26" y2="83.82" width="0.1524" layer="91"/>
+<wire x1="48.26" y1="83.82" x2="5.08" y2="83.82" width="0.1524" layer="91"/>
+<wire x1="5.08" y1="83.82" x2="5.08" y2="76.2" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
