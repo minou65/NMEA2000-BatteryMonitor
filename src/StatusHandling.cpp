@@ -132,8 +132,6 @@ void BatteryStatus::updateTtG() {
 }
 
 void BatteryStatus::updateConsumption(float current, float period, uint16_t numPeriods) {
-    // We use the average between the last and the current value for summation.
-    float _periodConsumption;
 
     for (int i = 0; i < numPeriods; ++i) {
         if (currentValues.isFull()) {
@@ -151,7 +149,8 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
         lastCurrent = current;
     }
 
-    _periodConsumption = (lastCurrent + current) / 2.0 * period * numPeriods;
+    // We use the average between the last and the current value for summation.
+    float _periodConsumption = (lastCurrent + current) / 2.0 * period * numPeriods;
 
     // Has to be in 0.01 kWh....
     double _consumption = _periodConsumption / 3.6 / 1000.0 / 10.0 * lastVoltage;
@@ -168,7 +167,7 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
     else {
  		// We are discharging
 
-        double _tempSumApHDrawn = _periodConsumption / -3.6;
+        double _tempSumApHDrawn = _periodConsumption / -3600; // Ah
         if (stats.sumApHDrawn >= MIN_FLOAT + _tempSumApHDrawn) {
             stats.sumApHDrawn += _tempSumApHDrawn;
         }
@@ -177,7 +176,7 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
         }
 
         // Verify that we don't have an overflow
-        if (stats.amountDischargedEnergy >= MAX_FLOAT + (_consumption * -1)) {
+        if (stats.amountDischargedEnergy <= MAX_FLOAT - (_consumption * -1)) {
             stats.amountDischargedEnergy += (_consumption * -1);
         }
         else {
@@ -185,14 +184,6 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
         }
 
     }
-
-    //Serial.println("BatteryStatus::updateConsumption");
-    //Serial.printf("    current: %.3f\n", current);
-    //Serial.printf("    period: %.3f\n", period);
-    //Serial.printf("    numPeriods: %d\n", numPeriods);
-    //Serial.printf("    periodConsumption: %.3f\n", _periodConsumption);
-    //Serial.printf("    consumption: %.3f\n", consumption);
-
 
     stats.remainAs += _periodConsumption;
     stats.consumedAs += _periodConsumption;
@@ -205,6 +196,20 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
     }
 
     lastCurrent = current;
+
+    //Serial.println("BatteryStatus::updateConsumption");
+    //Serial.printf("    current: %.3f\n", current);
+    //Serial.printf("    Voltage: %.3f\n", lastVoltage);
+    //Serial.printf("    period: %.3f\n", period);
+    //Serial.printf("    numPeriods: %d\n", numPeriods);
+    //Serial.printf("    periodConsumption: %.3f\n", _periodConsumption);
+    //Serial.printf("    consumption: %.3f\n", _consumption);
+    //Serial.printf("    amountChargedEnergy: %.3f kWh\n", stats.amountChargedEnergy);
+    //Serial.printf("    amountDischargedEnergy: %.3f kWh\n", stats.amountDischargedEnergy);
+    //Serial.printf("    sumApHDrawn: %.3f Ah\n", stats.sumApHDrawn);
+    //Serial.printf("    remainAs: %.3f\n", stats.remainAs);
+    //Serial.printf("    consumedAs: %.3f\n", stats.consumedAs);
+
 }
 
 float BatteryStatus::getAverageConsumption() {
