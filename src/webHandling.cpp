@@ -398,7 +398,7 @@ void handleData(AsyncWebServerRequest* request) {
     json_["averageDischarge"] = String(stats_.averageDischarge / 1000.00f, 3); //Ah
     json_["numChargeCycles"] = stats_.numChargeCycles;
     json_["numFullDischarge"] = stats_.numFullDischarge;
-    json_["sumApHDrawn"] = stats_.sumApHDrawn;  //Ah
+    json_["sumApHDrawn"] = String(stats_.sumApHDrawn, 3);  //Ah
     json_["minBatVoltage"] = String(stats_.minBatVoltage / 1000.00f, 2); // V
     json_["maxBatVoltage"] = String(stats_.maxBatVoltage / 1000.00f, 2); // V
 
@@ -569,6 +569,8 @@ protected:
         _s += F("   document.getElementById('numChargeCycles').innerHTML = jsonData.numChargeCycles \n");
         _s += F("   document.getElementById('numAutoSyncs').innerHTML = jsonData.numAutoSyncs \n");
 
+        _s += F("   document.getElementById('sumApHDrawn').innerHTML = jsonData.sumApHDrawn + \"Ah\" \n");
+
         _s += F("}\n");
 
         return _s;
@@ -576,73 +578,77 @@ protected:
 };
 
 void handleStatistics(AsyncWebServerRequest* request) {
-    std::string content_;
-    MyHtmlRootFormatProviderStatistics fp_;
+    std::string _content;
+    MyHtmlRootFormatProviderStatistics _fp;
 
-    content_ += fp_.getHtmlHead(iotWebConf.getThingName()).c_str();
-    content_ += fp_.getHtmlStyle().c_str();
-    content_ += fp_.getHtmlHeadEnd().c_str();
-    content_ += fp_.getHtmlScript().c_str();
-    content_ += fp_.getHtmlTable().c_str();
-    content_ += fp_.getHtmlTableRow().c_str();
-    content_ += fp_.getHtmlTableCol().c_str();
+    _content += _fp.getHtmlHead(iotWebConf.getThingName()).c_str();
+    _content += _fp.getHtmlStyle().c_str();
+    _content += _fp.getHtmlHeadEnd().c_str();
+    _content += _fp.getHtmlScript().c_str();
+    _content += _fp.getHtmlTable().c_str();
+    _content += _fp.getHtmlTableRow().c_str();
+    _content += _fp.getHtmlTableCol().c_str();
 
-    content_ += fp_.getHtmlFieldset("Statistics").c_str();
-    content_ += fp_.getHtmlTable().c_str();
+    _content += _fp.getHtmlFieldset("Statistics").c_str();
+    _content += _fp.getHtmlTable().c_str();
 
-    content_ += fp_.getHtmlTableRowSpan("min Volt: ", "no data", "minBatVoltage").c_str();
-    content_ += fp_.getHtmlTableRowSpan("max Volt: ", "no data", "maxBatVoltage").c_str();
+    _content += _fp.getHtmlTableRowSpan("min Volt: ", "no data", "minBatVoltage").c_str();
+    _content += _fp.getHtmlTableRowSpan("max Volt: ", "no data", "maxBatVoltage").c_str();
 
-    //content_ += fp_.getHtmlTableRowSpan("Consumed Ah: ", "no data", "consumedAh").c_str();
-    content_ += fp_.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy").c_str();
-    content_ += fp_.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy").c_str();
-   // content_ += fp_.getHtmlTableRowSpan("Avg. discharged energy:", "no data", "averageDischarge").c_str();
-    content_ += fp_.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge").c_str();
-    content_ += fp_.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge").c_str();
+    //_content += _fp.getHtmlTableRowSpan("Consumed Ah: ", "no data", "consumedAh").c_str();
+    _content += _fp.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy").c_str();
+    _content += _fp.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy").c_str();
+    //_content += _fp.getHtmlTableRowSpan("Avg. discharged energy:", "no data", "averageDischarge").c_str();
+    _content += _fp.getHtmlTableRowSpan("Total Ah drawn:", "no data", "sumApHDrawn").c_str();
+    
+    _content += _fp.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge").c_str();
+    _content += _fp.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge").c_str();
 
-    content_ += fp_.getHtmlTableRowSpan("min Temperatur: ", "no data", "deepestTemperatur").c_str();
-    content_ += fp_.getHtmlTableRowSpan("max Temperatur: ", "no data", "highestTemperatur").c_str();
+    _content += _fp.getHtmlTableRowSpan("min Temperatur: ", "no data", "deepestTemperatur").c_str();
+    _content += _fp.getHtmlTableRowSpan("max Temperatur: ", "no data", "highestTemperatur").c_str();
 
-    content_ += fp_.getHtmlTableRowSpan("Charge cycles: ", "no data", "numChargeCycles").c_str();
-    content_ += fp_.getHtmlTableRowSpan("Auto syncs: ", "no data", "numAutoSyncs").c_str();
-    content_ += fp_.getHtmlTableRowSpan("Time since last full:", "no data", "TimeSinceLastFull").c_str();
+    _content += _fp.getHtmlTableRowSpan("Charge cycles: ", "no data", "numChargeCycles").c_str();
+    _content += _fp.getHtmlTableRowSpan("Auto syncs: ", "no data", "numAutoSyncs").c_str();
+    _content += _fp.getHtmlTableRowSpan("Time since last full:", "no data", "TimeSinceLastFull").c_str();
 
-    content_ += fp_.getHtmlTableEnd().c_str();
-    content_ += fp_.getHtmlFieldsetEnd().c_str();
 
-    content_ += fp_.addNewLine(2).c_str();
 
-    content_ += "<form action = '/resetstats' method = 'get'><button type = 'submit'>Reset statistics</button></form></br>";
+    _content += _fp.getHtmlTableEnd().c_str();
+    _content += _fp.getHtmlFieldsetEnd().c_str();
 
-    content_ += fp_.getHtmlTable().c_str();
-    content_ += fp_.getHtmlTableRowText("<a href='/'>Main page</a>").c_str();
-    content_ += fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>").c_str();
-    content_ += fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>").c_str();
+    _content += _fp.addNewLine(2).c_str();
 
-    content_ += fp_.getHtmlTableEnd().c_str();
+    _content += "<form action = '/resetstats' method = 'get'><button type = 'submit'>Reset statistics</button></form></br>";
 
-    content_ += fp_.getHtmlTableColEnd().c_str();
-    content_ += fp_.getHtmlTableRowEnd().c_str();
-    content_ += fp_.getHtmlTableEnd().c_str();
-    content_ += fp_.getHtmlEnd().c_str();
+    _content += _fp.getHtmlTable().c_str();
+    _content += _fp.getHtmlTableRowText("<a href='/'>Main page</a>").c_str();
+    _content += _fp.getHtmlTableRowText("<a href = 'config'>Configuration</a>").c_str();
+    _content += _fp.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>").c_str();
 
-    AsyncWebServerResponse* response = request->beginChunkedResponse("text/html", [content_](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
+    _content += _fp.getHtmlTableEnd().c_str();
 
-        std::string chunk_ = "";
-        size_t len_ = min(content_.length() - index, maxLen);
-        if (len_ > 0) {
-            chunk_ = content_.substr(index, len_);
-            chunk_.copy((char*)buffer, chunk_.length());
+    _content += _fp.getHtmlTableColEnd().c_str();
+    _content += _fp.getHtmlTableRowEnd().c_str();
+    _content += _fp.getHtmlTableEnd().c_str();
+    _content += _fp.getHtmlEnd().c_str();
+
+    AsyncWebServerResponse* _response = request->beginChunkedResponse("text/html", [_content](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
+
+        std::string _chunk = "";
+        size_t _len = min(_content.length() - index, maxLen);
+        if (_len > 0) {
+            _chunk = _content.substr(index, _len);
+            _chunk.copy((char*)buffer, _chunk.length());
         }
-        if (index + len_ <= content_.length())
-            return chunk_.length();
+        if (index + _len <= _content.length())
+            return _chunk.length();
         else
             return 0;
 
         });
-    response->setContentLength(content_.length());
-    response->addHeader("Server", "ESP Async Web Server");
-    request->send(response);
+    _response->setContentLength(_content.length());
+    _response->addHeader("Server", "ESP Async Web Server");
+    request->send(_response);
 }
 
 void convertParams() {
