@@ -29,9 +29,8 @@ void BatteryStatus::begin() {
 
     if (!readStats()) {
 		stats.init();
-        Serial.println("BatteryStatus::begin: No data found, loading default");
 	} else {
-		Serial.println("BatteryStatus::begin: Preferences data found");
+
 	}
 }
 
@@ -133,7 +132,7 @@ void BatteryStatus::updateTtG() {
 
 void BatteryStatus::updateConsumption(float current, float period, uint16_t numPeriods) {
 
-    for (int i = 0; i < numPeriods; ++i) {
+    for (int _i = 0; _i < numPeriods; ++_i) {
         if (currentValues.isFull()) {
             float _oldVal;
             currentValues.pop(_oldVal);
@@ -213,9 +212,9 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
 }
 
 float BatteryStatus::getAverageConsumption() {
-    uint16_t count = currentValues.size();
-    if (count != 0) {
-		return  (glidingAverageCurrent / count) * -1;
+    uint16_t _count = currentValues.size();
+    if (_count != 0) {
+		return  (glidingAverageCurrent / _count) * -1;
         
     } else {
         return 0;
@@ -307,14 +306,14 @@ void BatteryStatus::resetStats() {
 }
 
 void BatteryStatus::updateStats(unsigned long now) {
-    int timeDeltaSec = (now - lasStatUpdate) / 1000;
+    int _timeDeltaSec = (now - lasStatUpdate) / 1000;
     lasStatUpdate = now;
-    if (timeDeltaSec < 0) {
+    if (_timeDeltaSec < 0) {
         // We had an overflow, so let's assume the last call was 1 sec ago (default interval)
-        timeDeltaSec = 1;
+        _timeDeltaSec = 1;
     }
     if (stats.secsSinceLastFull >= 0) {
-        stats.secsSinceLastFull += timeDeltaSec;
+        stats.secsSinceLastFull += _timeDeltaSec;
     }
 
     if (stats.tTgVal != INFINITY) {
@@ -332,12 +331,12 @@ void BatteryStatus::updateStats(unsigned long now) {
 
     }
 
-    uint32_t voltageV = lastVoltage * 1000;
-    if (stats.minBatVoltage > voltageV) {
-        stats.minBatVoltage = voltageV;
+    uint32_t _voltageV = lastVoltage * 1000;
+    if (stats.minBatVoltage > _voltageV) {
+        stats.minBatVoltage = _voltageV;
     }
-    if (stats.maxBatVoltage < voltageV) {
-        stats.maxBatVoltage = voltageV;
+    if (stats.maxBatVoltage < _voltageV) {
+        stats.maxBatVoltage = _voltageV;
     }   
 
     if ((stats.deepestTemperatur > lastTemperature) || (stats.deepestTemperatur == -127.00) || (stats.deepestTemperatur == 0.00)) {
@@ -366,22 +365,37 @@ bool BatteryStatus::readStatsFromRTC() {
 }
 
 void BatteryStatus::writeStats() {
-	Preferences preferences;
-	preferences.begin("BatteryMonitor", false);
-	preferences.putBytes("stats", &stats, sizeof(stats));
-	preferences.end();
+    Preferences _preferences;
+    _preferences.begin("BatteryMonitor", false);
+    size_t _writtenBytes = _preferences.putBytes("stats", &stats, sizeof(stats));
+
+    if (_writtenBytes != sizeof(stats)) {
+        Serial.println("Error writing data. Clearing container...");
+        _preferences.clear();
+    }
+    else {
+        Serial.printf("Successfully written %d bytes to preferences.\n", _writtenBytes);
+    }
+    _preferences.end();
 }
 
 bool BatteryStatus::readStats() {
-	bool res = true;
-	Preferences preferences;
-	preferences.begin("BatteryMonitor", true);
-	if (preferences.getBytes("stats", &stats, sizeof(stats)) != sizeof(stats)) {
-		res = false;
-	}
-	preferences.end();
-	return res;
+    bool _res = false;
+    Preferences _preferences;
+    _preferences.begin("BatteryMonitor", true);
+    size_t _readBytes = _preferences.getBytes("stats", &stats, sizeof(stats));
+    if (_readBytes == sizeof(stats)) {
+        Serial.printf("BatteryStatus::readStats: Successfully read %d bytes from preferences.\n", _readBytes);
+        _res = true;
+    }
+    else {
+        Serial.println("BatteryStatus::readStats: No valid data found");
+    }
+    _preferences.end();
+    return _res;
 }
+
+
 
 #else 
 void BatteryStatus::writeStatsToRTC() {
