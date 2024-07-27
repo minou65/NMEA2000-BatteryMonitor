@@ -405,6 +405,9 @@ void handleData(AsyncWebServerRequest* request) {
     std::string _hours2 = std::to_string(stats_.secsSinceLastFull / 3600);
     std::string _minutes2 = std::to_string((stats_.secsSinceLastFull % 3600) / 60);
     std::string _seconds2 = std::to_string(stats_.secsSinceLastFull % 60);
+    if (_seconds2 == "-1") {
+        _seconds2 = "0";
+    }
     _minutes2.insert(0, 2 - _minutes2.length(), '0');
     _hours2.insert(0, 2 - _hours2.length(), '0');
     _seconds2.insert(0, 2 - _seconds2.length(), '0');
