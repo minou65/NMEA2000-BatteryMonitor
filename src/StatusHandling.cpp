@@ -366,32 +366,32 @@ bool BatteryStatus::readStatsFromRTC() {
 
 void BatteryStatus::writeStats() {
     Preferences _preferences;
-    _preferences.begin("BatteryMonitor", false);
-    size_t _writtenBytes = _preferences.putBytes("stats", &stats, sizeof(stats));
+    //_preferences.begin("BatteryMonitor", false);
+    //size_t _writtenBytes = _preferences.putBytes("stats", &stats, sizeof(stats));
 
-    if (_writtenBytes != sizeof(stats)) {
-        Serial.println("Error writing data. Clearing container...");
-        _preferences.clear();
-    }
-    else {
-        Serial.printf("Successfully written %d bytes to preferences.\n", _writtenBytes);
-    }
-    _preferences.end();
+    //if (_writtenBytes != sizeof(stats)) {
+    //    Serial.println("Error writing data. Clearing container...");
+    //    _preferences.clear();
+    //}
+    //else {
+    //    Serial.printf("Successfully written %d bytes to preferences.\n", _writtenBytes);
+    //}
+    //_preferences.end();
 }
 
 bool BatteryStatus::readStats() {
     bool _res = false;
-    Preferences _preferences;
-    _preferences.begin("BatteryMonitor", true);
-    size_t _readBytes = _preferences.getBytes("stats", &stats, sizeof(stats));
-    if (_readBytes == sizeof(stats)) {
-        Serial.printf("BatteryStatus::readStats: Successfully read %d bytes from preferences.\n", _readBytes);
-        _res = true;
-    }
-    else {
-        Serial.println("BatteryStatus::readStats: No valid data found");
-    }
-    _preferences.end();
+    //Preferences _preferences;
+    //_preferences.begin("BatteryMonitor", true);
+    //size_t _readBytes = _preferences.getBytes("stats", &stats, sizeof(stats));
+    //if (_readBytes == sizeof(stats)) {
+    //    Serial.printf("BatteryStatus::readStats: Successfully read %d bytes from preferences.\n", _readBytes);
+    //    _res = true;
+    //}
+    //else {
+    //    Serial.println("BatteryStatus::readStats: No valid data found");
+    //}
+    //_preferences.end();
     return _res;
 }
 
