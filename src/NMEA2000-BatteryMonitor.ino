@@ -46,10 +46,10 @@ void setup() {
         0 /* Core where the task should run */
     );
 
-    esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
-    esp_task_wdt_add(NULL); //add current thread to WDT watch
+    //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+    //esp_task_wdt_add(NULL); //add current thread to WDT watch
 
-    WDtimer.start();
+    //WDtimer.start();
 }
 
 void loop() {
@@ -64,9 +64,9 @@ void loop() {
 
     gBattery.setTemperatur(GetTemperatur());
 
-    if(WDtimer.repeat()) {
-		esp_task_wdt_reset();
-	}
+    //if(WDtimer.repeat()) {
+	//	esp_task_wdt_reset();
+	//}
 }
 
 void loop2(void* parameter) {
