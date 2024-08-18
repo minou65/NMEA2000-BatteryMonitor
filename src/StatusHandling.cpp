@@ -253,7 +253,7 @@ bool BatteryStatus::checkFull() {
                     setDeepestDischarge();
                     isSynced = true;
                 }
-                stats.secsSinceLastFull = 0;
+                stats.secsSinceLastFull = -1;
                 stats.numAutoSyncs++;
                 stats.lastDischarge = roundf(stats.remainAs / 3.6);
                 stats.consumedAs = 0.0;
@@ -274,7 +274,7 @@ void BatteryStatus::setBatterySoc(float val) {
     stats.remainAs = batteryCapacity * val;
     if(val >= 1.0) {
         fullReachedAt = millis();
-        stats.secsSinceLastFull = 0;
+        stats.secsSinceLastFull = -1;
     }
     updateTtG();
     writeStats();
@@ -316,8 +316,12 @@ void BatteryStatus::updateStats(unsigned long now) {
         stats.secsSinceLastFull += _timeDeltaSec;
     }
 
-    if (stats.tTgVal != INFINITY) {
+    if ((stats.tTgVal != INFINITY) && (!isCharging)) {
         unsigned int _mAh = stats.remainAs / 3.6;
+
+        if (stats.secsSinceLastFull == -1) {
+            stats.secsSinceLastFull = 0;
+        }
 
         if ((_mAh > 0) && (stats.deepestDischarge > _mAh)) {
             stats.deepestDischarge = _mAh;
