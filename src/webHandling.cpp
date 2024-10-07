@@ -23,8 +23,6 @@
 #include <IotWebConfAsyncClass.h>
 #include <IotWebConfAsyncUpdateServer.h>
 #include <IotWebRoot.h>
-#include <AsyncJson.h>
-#include <ArduinoJson.h>
 
 #include <N2kTypes.h>
 
@@ -353,77 +351,72 @@ void handleSetRuntime(AsyncWebServerRequest* request) {
 }
 
 void handleData(AsyncWebServerRequest* request) {
-    AsyncJsonResponse* response = new AsyncJsonResponse();
-    response->addHeader("Server", "ESP Async Web Server");
-    JsonVariant& json_ = response->getRoot();
-
-	json_["rssi"] = WiFi.RSSI();
-	json_["voltage"] = String(gBattery.voltage(), 2);
-	json_["current"] = String(gBattery.current(), 2);
-	json_["avgCurrent"] = String(gBattery.averageCurrent(), 2);
-	json_["soc"] = String(gBattery.soc() * 100, 1);
-    if (gBattery.tTg() != 4294967295) {
-        std::string _hours = std::to_string(gBattery.tTg() / 3600);
-        std::string _minutes = std::to_string((gBattery.tTg() % 3600) / 60);
-        _minutes.insert(0, 2 - _minutes.length(), '0');
-        _hours.insert(0, 2 - _hours.length(), '0');
-		json_["tTg"] = _hours + ":" + _minutes.c_str();
+	String json_ = "{";
+	json_ += "\"rssi\":" + String(WiFi.RSSI()) + ",";
+	json_ += "\"voltage\":" + String(gBattery.voltage(), 2) + ",";
+	json_ += "\"current\":" + String(gBattery.current(), 2) + ",";
+	json_ += "\"avgCurrent\":" + String(gBattery.averageCurrent(), 2) + ",";
+	json_ += "\"soc\":" + String(gBattery.soc() * 100, 1) + ",";
+	if (gBattery.tTg() != 4294967295) {
+        String hours_ = String(gBattery.tTg() / 3600);
+        String minutes_ = String((gBattery.tTg() % 3600) / 60);
+        if (minutes_.length() < 2) minutes_ = "0" + minutes_;
+        if (hours_.length() < 2) hours_ = "0" + hours_;
+        json_ += "\"tTg\":\"" + hours_ + ":" + minutes_ + "\",";
 	}
-    else {
-		json_["tTg"] = "00:00";
+	else {
+		json_ += "\"tTg\":\"00:00\",";
+	}
+	json_ += "\"isFull\":" + String(gBattery.isFull()) + ",";
+	json_ += "\"temperature\":" + String(gBattery.temperatur(), 2) + ",";
+	json_ += "\"batteryType\":\"" + String(BatTypeNames[gBatteryType]) + "\",";
+	json_ += "\"batteryVoltage\":\"" + String(gBatteryVoltage) + "\",";
+	json_ += "\"batteryChemistry\":\"" + String(BatChemNames[gBatteryChemistry]) + "\",";
+	json_ += "\"capacity\":" + String(gCapacityAh) + ",";
+	json_ += "\"chargeEfficiency\":" + String(gChargeEfficiencyPercent) + ",";
+	json_ += "\"minSoc\":" + String(gMinPercent) + ",";
+	json_ += "\"tailCurrent\":" + String((gTailCurrentmA / 1000.00f), 3) + ","; 
+	json_ += "\"fullVoltage\":" + String((gFullVoltagemV / 1000.00f), 2) + ",";
+	json_ += "\"fullDelay\":" + String(gFullDelayS) + ",";
+	json_ += "\"currentThreshold\":" + String(gCurrentThreshold, 3) + ",";
+	json_ += "\"shuntResistance\":" + String(gShuntResistanceR, 3) + ",";
+	json_ += "\"maxCurrent\":" + String(gMaxCurrentA) + ",";
+	json_ += "\"voltageCalibrationFactor\":" + String(gVoltageCalibrationFactor) + ","; 
+	json_ += "\"currentCalibrationFactor\":" + String(gCurrentCalibrationFactor) + ",";
+
+	json_ += "\"consumedAh\":" + String(gBattery.statistics().consumedAs / 3600.00f, 3) + ","; // Ah
+	json_ += "\"consumedAs\":" + String(gBattery.statistics().consumedAs, 2) + ","; //As
+	json_ += "\"deepestDischarge\":" + String(gBattery.statistics().deepestDischarge / 1000.00f, 3) + ","; // Ah
+	json_ += "\"lastDischarge\":" + String(gBattery.statistics().lastDischarge / 1000.00f, 3) + ","; // Ah
+	json_ += "\"averageDischarge\":" + String(gBattery.statistics().averageDischarge / 1000.00f, 3) + ","; //Ah
+	json_ += "\"numChargeCycles\":" + String(gBattery.statistics().numChargeCycles) + ",";
+	json_ += "\"numFullDischarge\":" + String(gBattery.statistics().numFullDischarge) + ",";
+	json_ += "\"sumApHDrawn\":" + String(gBattery.statistics().sumApHDrawn, 3) + ",";  //Ah
+	json_ += "\"minBatVoltage\":" + String(gBattery.statistics().minBatVoltage / 1000.00f, 2) + ","; // V
+	json_ += "\"maxBatVoltage\":" + String(gBattery.statistics().maxBatVoltage / 1000.00f, 2) + ","; // V
+
+    String hours2_ = String(gBattery.statistics().secsSinceLastFull / 3600);
+    String minutes2_ = String((gBattery.statistics().secsSinceLastFull % 3600) / 60);
+    String seconds2_ = String(gBattery.statistics().secsSinceLastFull % 60);
+    if (seconds2_ == "-1") {
+        seconds2_ = "0";
     }
-	json_["isFull"] = gBattery.isFull();
-	json_["temperature"] = String(gBattery.temperatur(), 2);
-	json_["batteryType"] = gBatteryType;
-	json_["batteryVoltage"] = gBatteryVoltage;
-	json_["batteryChemistry"] = gBatteryChemistry;
-	json_["capacity"] = gCapacityAh;
-	json_["chargeEfficiency"] = gChargeEfficiencyPercent;
-	json_["minSoc"] = gMinPercent;
-	json_["tailCurrent"] = String((gTailCurrentmA / 1000.00f), 3);
-    json_["fullVoltage"] = String((gFullVoltagemV / 1000.00f), 2);
-	json_["fullDelay"] = gFullDelayS;
-	json_["currentThreshold"] = String(gCurrentThreshold, 3);
-	json_["shuntResistance"] = gShuntResistanceR;
-	json_["maxCurrent"] = gMaxCurrentA;
-	json_["voltageCalibrationFactor"] = gVoltageCalibrationFactor;
-	json_["currentCalibrationFactor"] = gCurrentCalibrationFactor;
+    if (minutes2_.length() < 2) minutes2_ = "0" + minutes2_;
+    if (hours2_.length() < 2) hours2_ = "0" + hours2_;
+    if (seconds2_.length() < 2) seconds2_ = "0" + seconds2_;
+    json_ += "\"TimeSinceLastFull\":\"" + hours2_ + ":" + minutes2_ + ":" + seconds2_ + "\",";
 
-    Statistics stats_ = gBattery.statistics();
+	json_ += "\"secsSinceLastFull\":" + String(gBattery.statistics().secsSinceLastFull) + ",";
+	json_ += "\"numAutoSyncs\":" + String(gBattery.statistics().numAutoSyncs) + ",";
+	json_ += "\"numLowVoltageAlarms\":" + String(gBattery.statistics().numLowVoltageAlarms) + ",";
+	json_ += "\"numHighVoltageAlarms\":" + String(gBattery.statistics().numHighVoltageAlarms) + ",";
+	json_ += "\"amountDischargedEnergy\":" + String(gBattery.statistics().amountDischargedEnergy, 3) + ","; //kWh
+	json_ += "\"amountChargedEnergy\":" + String(gBattery.statistics().amountChargedEnergy, 3) + ","; // kWh
+	json_ += "\"deepestTemperatur\":" + String(gBattery.statistics().deepestTemperatur, 2) + ","; //°C
+	json_ += "\"highestTemperatur\":" + String(gBattery.statistics().highestTemperatur, 2) + ""; //°C
 
-    json_["consumedAh"] = String(stats_.consumedAs / 3600.00f, 3); // Ah
-    json_["consumedAs"] = String(stats_.consumedAs, 2); //As
-    json_["deepestDischarge"] = String(stats_.deepestDischarge / 1000.00f, 3); // Ah
-    json_["lastDischarge"] = String(stats_.lastDischarge / 1000.00f, 3); // Ah
-    json_["averageDischarge"] = String(stats_.averageDischarge / 1000.00f, 3); //Ah
-    json_["numChargeCycles"] = stats_.numChargeCycles;
-    json_["numFullDischarge"] = stats_.numFullDischarge;
-    json_["sumApHDrawn"] = String(stats_.sumApHDrawn, 3);  //Ah
-    json_["minBatVoltage"] = String(stats_.minBatVoltage / 1000.00f, 2); // V
-    json_["maxBatVoltage"] = String(stats_.maxBatVoltage / 1000.00f, 2); // V
-
-    std::string _hours2 = std::to_string(stats_.secsSinceLastFull / 3600);
-    std::string _minutes2 = std::to_string((stats_.secsSinceLastFull % 3600) / 60);
-    std::string _seconds2 = std::to_string(stats_.secsSinceLastFull % 60);
-    if (_seconds2 == "-1") {
-        _seconds2 = "0";
-    }
-    _minutes2.insert(0, 2 - _minutes2.length(), '0');
-    _hours2.insert(0, 2 - _hours2.length(), '0');
-    _seconds2.insert(0, 2 - _seconds2.length(), '0');
-    json_["TimeSinceLastFull"] = _hours2 + ":" + _minutes2 + ":" + _seconds2.c_str();
-    json_["secsSinceLastFull"] = stats_.secsSinceLastFull;
-
-    json_["numAutoSyncs"] = stats_.numAutoSyncs;
-    json_["numLowVoltageAlarms"] = stats_.numLowVoltageAlarms;
-    json_["numHighVoltageAlarms"] = stats_.numHighVoltageAlarms;
-    json_["amountDischargedEnergy"] = String(stats_.amountDischargedEnergy, 3); //kWh
-    json_["amountChargedEnergy"] = String(stats_.amountChargedEnergy, 3); // kWh
-    json_["deepestTemperatur"] = String(stats_.deepestTemperatur, 2); //°C
-    json_["highestTemperatur"] = String(stats_.highestTemperatur, 2); //°C
-
-    response->setLength();
-	request->send(response);
+	json_ += "}";
+	request->send(200, "application/json", json_);
 }
 
 class MyHtmlRootFormatProvider : public HtmlRootFormatProvider {
