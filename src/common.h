@@ -55,4 +55,6 @@ extern uint8_t gN2KInstance;
 
 #define UPDATE_INTERVAL 1000
 
+extern String getCurrentTime();
+
 #endif

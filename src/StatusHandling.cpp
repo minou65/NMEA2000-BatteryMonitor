@@ -5,6 +5,8 @@
 #include <Preferences.h>
 #endif
 
+#include <WebSerial.h>
+
 const double MAX_FLOAT = 3.4E+38; // nax value for float
 const double MIN_FLOAT = -3.4E+38; // min value forfloat
 
@@ -370,6 +372,9 @@ bool BatteryStatus::readStatsFromRTC() {
 
 void BatteryStatus::writeStats() {
     Preferences _preferences;
+
+	WebSerial.printf("%s : BatteryStatus::writeStats\n", getCurrentTime());
+
     //_preferences.begin("BatteryMonitor", false);
     //size_t _writtenBytes = _preferences.putBytes("stats", &stats, sizeof(stats));
 
@@ -384,6 +389,8 @@ void BatteryStatus::writeStats() {
 }
 
 bool BatteryStatus::readStats() {
+	WebSerial.printf("%s : BatteryStatus::readStats\n", getCurrentTime());
+
     bool _res = false;
     //Preferences _preferences;
     //_preferences.begin("BatteryMonitor", true);

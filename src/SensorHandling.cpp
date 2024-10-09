@@ -46,6 +46,16 @@ Neotimer statsTimer = Neotimer(5 * 60 * 1000); // 5 minutes
 
 IRAM_ATTR void alert(void) { ++alertCounter; }
 
+String getCurrentTime() {
+    time_t now_ = time(nullptr);
+    struct tm* timeInfo_ = localtime(&now_);
+
+    char buffer_[9]; // Puffer für "H:m:s"
+    strftime(buffer_, sizeof(buffer_), "%H:%M:%S", timeInfo_);
+
+    return String(buffer_);
+}
+
 uint16_t translateConversionTime(ina226_shuntConvTime_t time) {
     uint16_t result = 0;
     switch (time) {
@@ -181,7 +191,7 @@ void updateAhCounter() {
     float _current = ina.readShuntCurrent() * gCurrentCalibrationFactor;
     gBattery.updateConsumption(_current, sampleTime, _count);
 
-    //WebSerial.println(F("Update Ah counter"));
+    //WebSerial.printf("%s : Update Ah counter\n", getCurrentTime());
     //WebSerial.printf("    current: %.2f\n", _current);
     //WebSerial.printf("    voltage: %.2f\n", gBattery.voltage());
     //WebSerial.printf("    sampletime: %.2f\n    count: %i\n", sampleTime, _count);
@@ -193,7 +203,7 @@ void updateAhCounter() {
     Serial.printf("    sampletime: %.2f\n    count: %i\n", sampleTime, _count);
     if(_count > 1) {
         Serial.printf("Overflow %d\n", _count);
-		WebSerial.printf("Overflow %d\n", _count);
+		WebSerial.printf("%s : Overflow %d\n", getCurretnTime(),  _count);
     } 
 #endif // DEBUG_SENSOR
 
@@ -204,15 +214,15 @@ void sensorLoop() {
 
     if(!gSensorInitialized) {
 		if (statisticsTimer.repeat()) {
-			WebSerial.println("Sensor not initialized");
-            Serial.println("Sensor not initialized");
+			//WebSerial.printf("%s : Sensor not initialized\n", getCurrentTime());
+   //         Serial.println("Sensor not initialized");
 		}
         return;
     }
 
     if(updateSensorConfig) {
 
-        WebSerial.printf("calibrate sensor: Shunt resitance = %.3fR, max currenct = %iA\n", gShuntResistanceR, gMaxCurrentA);
+        WebSerial.printf("%s : calibrate sensor: Shunt resitance = %.3fR, max currenct = %iA\n", getCurrentTime(), gShuntResistanceR, gMaxCurrentA);
         ina.calibrate(gShuntResistanceR / 1000, gMaxCurrentA);    
         gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 
@@ -237,7 +247,7 @@ void sensorLoop() {
 	}
 
     if (outputTimer.repeat()) {
-        WebSerial.println(F("Battery status"));
+        WebSerial.printf("%s : Battery status\n", getCurrentTime());
         WebSerial.printf("    voltage:      %.3fV\n", gBattery.voltage());
         WebSerial.printf("    current:      %.3fA\n", gBattery.current());
         WebSerial.printf("    average:      %.3fA\n", gBattery.averageCurrent());
