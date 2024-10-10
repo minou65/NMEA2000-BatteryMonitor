@@ -367,7 +367,7 @@ void handleData(AsyncWebServerRequest* request) {
 	else {
 		json_ += "\"tTg\":\"00:00\",";
 	}
-	json_ += "\"isFull\":" + String(gBattery.isFull()) + ",";
+    json_ += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
 	json_ += "\"temperature\":" + String(gBattery.temperatur(), 2) + ",";
 	json_ += "\"batteryType\":\"" + String(BatTypeNames[gBatteryType]) + "\",";
 	json_ += "\"batteryVoltage\":\"" + String(gBatteryVoltage) + "\",";
