@@ -82,6 +82,7 @@ bool gParamsChanged = true;
 bool gSaveParams = false;
 bool startAPMode = true;
 uint8_t APModeOfflineTime = 0;
+bool ShouldReboot = false;
 
 uint16_t gCapacityAh;
 uint16_t gChargeEfficiencyPercent;
@@ -249,16 +250,27 @@ void wifiSetup() {
         }
     );
     server.on("/data", HTTP_GET, [](AsyncWebServerRequest* request) { handleData(request); });
-	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest* request) {
-            AsyncWebServerResponse* response = request->beginResponse(302, "text/plain", "please wait while the device is rebooting ...");
-            response->addHeader("Refresh", "15");
-            response->addHeader("Location", "/");
-            request->client()->setNoDelay(true); // Disable Nagle's algorithm so the client gets the 302 response immediately
-            request->send(response);
-		    delay(500);
-		    ESP.restart();
-		}
-	);
+
+    server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest* request) {
+        AsyncWebServerResponse* response = request->beginResponse(200, "text/html",
+            "<html>"
+            "<head>"
+            "<meta http-equiv=\"refresh\" content=\"15; url=/\">"
+            "<title>Rebooting...</title>"
+            "</head>"
+            "<body>"
+            "Please wait while the device is rebooting...<br>"
+            "You will be redirected to the homepage shortly."
+            "</body>"
+            "</html>");
+        request->client()->setNoDelay(true); // Disable Nagle's algorithm so the client gets the response immediately
+        request->send(response);
+        gBattery.writeStats();
+		ShouldReboot = true;
+        }
+    );
+
+
 
     server.onNotFound([](AsyncWebServerRequest* request) {
             AsyncWebRequestWrapper asyncWebRequestWrapper(request);
@@ -297,6 +309,11 @@ void wifiLoop() {
 		iotWebConf.goOffLine();
 		APModeTimer.stop();
 	}
+
+	if (ShouldReboot) {
+		delay(1000);
+		ESP.restart();
+	}
     
 
 }
@@ -318,6 +335,7 @@ void onSetSoc(AsyncWebServerRequest* request) {
     if (!_soc.isEmpty()) {
         float _socVal = _soc.toInt() / 100.00;
         gBattery.setBatterySoc(_socVal);
+		gBattery.writeStats();
     }
 
     request->send(200, "text/html", SOC_RESPONSE);
