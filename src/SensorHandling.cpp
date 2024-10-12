@@ -42,7 +42,7 @@ bool updateSensorConfig = true;
 static INA226 ina(Wire);
 Neotimer statisticsTimer = Neotimer(1000);
 Neotimer outputTimer = Neotimer(15000);
-Neotimer statsTimer = Neotimer(5 * 60 * 1000); // 5 minutes
+Neotimer savePreferenceTimer = Neotimer(180 * 60 * 1000); // 3 hours
 
 IRAM_ATTR void alert(void) { ++alertCounter; }
 
@@ -143,7 +143,7 @@ void setupSensor() {
     gSensorInitialized = ina.begin();
 	statisticsTimer.start();
     outputTimer.start();
-    statsTimer.start();
+    savePreferenceTimer.start();
 
     // Check if the connection was successful, stop if not
     if (!gSensorInitialized) {
@@ -210,12 +210,15 @@ void updateAhCounter() {
 }
 
 void sensorLoop() {
-    unsigned long _now = millis();
+    unsigned long now_ = millis();
+
+    if (savePreferenceTimer.repeat()) {
+        gBattery.writeStats();
+    }
 
     if(!gSensorInitialized) {
 		if (statisticsTimer.repeat()) {
 			//WebSerial.printf("%s : Sensor not initialized\n", getCurrentTime());
-   //         Serial.println("Sensor not initialized");
 		}
         return;
     }
@@ -234,16 +237,12 @@ void sensorLoop() {
         updateAhCounter();
     }
 
-    if (statsTimer.repeat()) {
-        gBattery.writeStats();
-    }
-
 	if (statisticsTimer.repeat()) {
         gBattery.setVoltage(ina.readBusVoltage() * gVoltageCalibrationFactor);
         gBattery.checkFull();
         gBattery.updateSOC();
         gBattery.updateTtG();
-        gBattery.updateStats(_now);
+        gBattery.updateStats(now_);
 	}
 
     if (outputTimer.repeat()) {

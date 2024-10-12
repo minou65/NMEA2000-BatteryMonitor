@@ -13,9 +13,9 @@ struct Statistics {
         minBatVoltage = INT32_MAX;
         lastDischarge = INT32_MAX;
         deepestDischarge = INT32_MAX;
-
+        magic = MAGICKEY;
     }
-    const uint32_t magic = MAGICKEY;
+    uint32_t magic = MAGICKEY;
     // The following values are the main values we want
     float socVal;
     float remainAs;

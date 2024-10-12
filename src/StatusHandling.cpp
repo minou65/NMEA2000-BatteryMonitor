@@ -29,10 +29,16 @@ void BatteryStatus::begin() {
 	lastTemperature = 0;
 	isSynced = false;
 
-    if (!readStats()) {
-		stats.init();
-	} else {
+	stats.init();
 
+    if (!readStats()) {
+		Serial.println("BatteryStatus::begin: No valid data found. Resetting stats...");
+		stats.init();
+	} else if (stats.magic != MAGICKEY) {
+		Serial.println("BatteryStatus::begin: Invalid data found. Resetting stats...");
+		Serial.printf("    stats.magic: %d\n", stats.magic);
+		Serial.printf("    MAGICKEY: %d\n", MAGICKEY);
+		stats.init();
 	}
 }
 
@@ -279,7 +285,7 @@ void BatteryStatus::setBatterySoc(float val) {
         stats.secsSinceLastFull = -1;
     }
     updateTtG();
-    writeStats();
+    //writeStats();
 }
 
 void BatteryStatus::setDeepestDischarge() {
@@ -304,6 +310,8 @@ void BatteryStatus::resetStats() {
     stats.numHighVoltageAlarms = 0;
     stats.deepestTemperatur = INT32_MAX;
     stats.highestTemperatur = 0;
+
+	writeStats();
 
 }
 
@@ -371,39 +379,56 @@ bool BatteryStatus::readStatsFromRTC() {
 }
 
 void BatteryStatus::writeStats() {
-    Preferences _preferences;
-
 	WebSerial.printf("%s : BatteryStatus::writeStats\n", getCurrentTime());
+    try {
+		Preferences preferences_;
+		preferences_.begin("BatteryMonitor", false);
 
-    //_preferences.begin("BatteryMonitor", false);
-    //size_t _writtenBytes = _preferences.putBytes("stats", &stats, sizeof(stats));
+		size_t writtenBytes_ = preferences_.putBytes("stats", &stats, sizeof(stats));
 
-    //if (_writtenBytes != sizeof(stats)) {
-    //    Serial.println("Error writing data. Clearing container...");
-    //    _preferences.clear();
-    //}
-    //else {
-    //    Serial.printf("Successfully written %d bytes to preferences.\n", _writtenBytes);
-    //}
-    //_preferences.end();
+		if (writtenBytes_ != sizeof(stats)) {
+			Serial.println("Error writing data. Clearing container...");
+			WebSerial.printf("%s : Error writing data. Clearing container...\n", getCurrentTime());
+			preferences_.clear();
+		}
+		else {
+			Serial.printf("Successfully written %d bytes to preferences.\n", writtenBytes_);
+			WebSerial.printf("%s : Successfully written %d bytes to preferences.\n", getCurrentTime(), writtenBytes_);
+		}
+		preferences_.end();
+	}
+    catch (const std::exception& e) {
+        Serial.printf("Error writing data: %s\n", e.what());
+        WebSerial.printf("%s : Error writing data: %s\n", getCurrentTime(), e.what());
+    }
 }
+
 
 bool BatteryStatus::readStats() {
 	WebSerial.printf("%s : BatteryStatus::readStats\n", getCurrentTime());
 
-    bool _res = false;
-    //Preferences _preferences;
-    //_preferences.begin("BatteryMonitor", true);
-    //size_t _readBytes = _preferences.getBytes("stats", &stats, sizeof(stats));
-    //if (_readBytes == sizeof(stats)) {
-    //    Serial.printf("BatteryStatus::readStats: Successfully read %d bytes from preferences.\n", _readBytes);
-    //    _res = true;
-    //}
-    //else {
-    //    Serial.println("BatteryStatus::readStats: No valid data found");
-    //}
-    //_preferences.end();
-    return _res;
+	try {
+		bool res = false;
+		Preferences preferences_;
+		preferences_.begin("BatteryMonitor", true);
+		size_t readBytes_ = preferences_.getBytes("stats", &stats, sizeof(stats));
+		if (readBytes_ == sizeof(stats)) {
+			Serial.printf("BatteryStatus::readStats: Successfully read %d bytes from preferences.\n", readBytes_);
+			WebSerial.printf("%s : Successfully read %d bytes from preferences.\n", getCurrentTime(), readBytes_);
+			res = true;
+		}
+		else {
+			Serial.println("BatteryStatus::readStats: No valid data found");
+			WebSerial.printf("%s : No valid data found\n", getCurrentTime());
+		}
+		preferences_.end();
+		return res;
+	}
+	catch (const std::exception& e) {
+		Serial.printf("Error reading data: %s\n", e.what());
+		WebSerial.printf("%s : Error reading data: %s\n", getCurrentTime(), e.what());
+		return false;
+	}
 }
 
 
