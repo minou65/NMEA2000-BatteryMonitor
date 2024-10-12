@@ -265,7 +265,6 @@ void wifiSetup() {
             "</html>");
         request->client()->setNoDelay(true); // Disable Nagle's algorithm so the client gets the response immediately
         request->send(response);
-        gBattery.writeStats();
 		ShouldReboot = true;
         }
     );
@@ -310,7 +309,8 @@ void wifiLoop() {
 		APModeTimer.stop();
 	}
 
-	if (ShouldReboot) {
+	if (ShouldReboot || AsyncUpdater.isFinished()) {
+        gBattery.writeStats();
 		delay(1000);
 		ESP.restart();
 	}
