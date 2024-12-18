@@ -4,12 +4,13 @@
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
-#if ESP32
+#if defined(ESP32)
 #include <WiFi.h>
 // #include <esp_wifi.h>
- #else
-#include <ESP8266WiFi.h>   
-
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
+#else
+#error "Unsupported platform"
 #endif
 
 #include "common.h"
