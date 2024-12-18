@@ -1,9 +1,10 @@
 #define ESP32_CAN_TX_PIN GPIO_NUM_5  // Set CAN TX port to D5 
 #define ESP32_CAN_RX_PIN GPIO_NUM_4  // Set CAN RX port to D4
 
+#include <esp_mac.h>
+
 #include <N2kMessages.h>
 #include <NMEA2000_CAN.h>
-
 #include "NMEAHandling.h"
 
 #include "common.h"
@@ -48,7 +49,7 @@ void N2kInit() {
     int i = 0;
 
     // Generate unique number from chip id
-    esp_efuse_mac_get_default(chipid);
+	esp_efuse_mac_get_default(chipid);
     for (i = 0; i < 6; i++) id += (chipid[i] << (7 * i));
 
     // Reserve enough buffer for sending all messages. This does not work on small memory devices like Uno or Mega
