@@ -26,7 +26,7 @@ const char wifiInitialApPassword[] = "123456789";
 //      First it will light up (kept LOW), on Wifi connection it will blink,
 //      when connected to the Wifi it will turn off (kept HIGH).
 #define STATUS_PIN LED_BUILTIN
-#if ESP32 
+#if defined(ESP32)
 #define ON_LEVEL HIGH
 #else
 #define ON_LEVEL LOW
