@@ -83,16 +83,6 @@ private:
     char instanceID[STRING_LEN];
     char sidID[STRING_LEN];
     char sourceID[STRING_LEN];
-
-    // additional sources
-    iotwebconf::NumberParameter SourcePressureParam = iotwebconf::NumberParameter("SourcePressure", sourceIDPressure, SourcePressureValue, NUMBER_LEN, "23", nullptr, nullptr);
-    iotwebconf::NumberParameter SourceHumidityParam = iotwebconf::NumberParameter("SourceHumidity", sourceIDHumidity, SourceHumidityValue, NUMBER_LEN, "24", nullptr, nullptr);
-    char SourcePressureValue[NUMBER_LEN];
-    char SourceHumidityValue[NUMBER_LEN];
-
-    char sourceIDPressure[STRING_LEN];
-    char sourceIDHumidity[STRING_LEN];
-
 };
 
 extern NMEAConfig Config;
