@@ -398,7 +398,7 @@ void handleData(AsyncWebServerRequest* request) {
 	json_ += "\"fullVoltage\":" + String((gFullVoltagemV / 1000.00f), 2) + ",";
 	json_ += "\"fullDelay\":" + String(gFullDelayS) + ",";
 	json_ += "\"currentThreshold\":" + String(gCurrentThreshold, 3) + ",";
-	json_ += "\"shuntResistance\":" + String(gShuntResistanceR, 3) + ",";
+	json_ += "\"shuntResistance\":" + String(gShuntResistanceR, 4) + ",";
 	json_ += "\"maxCurrent\":" + String(gMaxCurrentA) + ",";
 	json_ += "\"voltageCalibrationFactor\":" + String(gVoltageCalibrationFactor) + ","; 
 	json_ += "\"currentCalibrationFactor\":" + String(gCurrentCalibrationFactor) + ",";
@@ -496,7 +496,7 @@ void handleRoot(AsyncWebServerRequest* request) {
 
 	content_ += fp_.getHtmlFieldset("Shunt configuration").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 3) + "&#8486;", "shuntResistance").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 4) + "&#8486;", "shuntResistance").c_str();
 	content_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
