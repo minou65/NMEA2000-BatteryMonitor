@@ -67,8 +67,8 @@ void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
 void handleStatistics(AsyncWebServerRequest* request);
 void convertParams();
-bool connectAp(const char* apName, const char* password);
 void connectWifi(const char* ssid, const char* password);
+iotwebconf::WifiAuthInfo* handleConnectWifiFailure();
 
 // -- Callback methods.
 void configSaved();
@@ -217,8 +217,8 @@ void wifiSetup() {
 
     iotWebConf.getApTimeoutParameter()->visible = true;
 
-    iotWebConf.setApConnectionHandler(&connectAp);
     iotWebConf.setWifiConnectionHandler(&connectWifi);
+    iotWebConf.setWifiConnectionFailedHandler(&handleConnectWifiFailure);
 
     // -- Initializing the configuration.
     iotWebConf.init();
@@ -707,20 +707,19 @@ void configSaved(){
   Serial.println(F("Parameters are saved"));
 } 
 
-bool connectAp(const char* apName, const char* password){
-    if (startAPMode){
-        Serial.println("starting AP mode ....");
-        return WiFi.softAP(apName, password);    
-    }
-	else {
-        Serial.println(F("start AP mode only at boot sequence"));
-        WiFi.mode(WIFI_MODE_STA);
-		return true;
-	}
-}
-
 void connectWifi(const char* ssid, const char* password){
 	Serial.println("Connecting to WiFi ...");
     WiFi.begin(ssid, password);
+}
+
+iotwebconf::WifiAuthInfo* handleConnectWifiFailure() {
+    if (!startAPMode) {
+        static iotwebconf::WifiAuthInfo auth_;
+        auth_ = iotWebConf.getWifiAuthInfo();
+        return &auth_;
+	}
+    else {
+        return nullptr;
+    }
 }
 
