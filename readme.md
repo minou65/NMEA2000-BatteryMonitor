@@ -51,6 +51,7 @@
 			- [Tail current \[A\] __\*__](#tail-current-a-)
 			- [Delay before full \[s\] __\*__](#delay-before-full-s-)
 			- [Current threshold](#current-threshold)
+			- [Statistics Page](#statistics-page)
 	- [Username and password](#username-and-password)
 	- [Default IP address](#default-ip-address)
 	- [Firmware Update](#firmware-update)
@@ -224,11 +225,11 @@ maximum current that may flow through the shut
 Use a multimeter to measure the voltage on the battery. The measured voltage divided by the voltage displayed by the battery monitor gives the factor that you enter here.
 
 #### Current calibration factor
-Use a multimeter to measure the current at the shunt. The measured current divided by the current displayed by the battery monitor gives the factor that you enter here.
-
-If you do not want to use a shunt, enter 0 here. See also [State of charge (Soc)](#state-of-charge-soc)
+Use a multimeter to measure the current at the shunt. The measured current, divided by the current displayed by the battery monitor, gives the factor that you need to enter here.
 
 Normally a positive current means that the battery is being charged, a negative current means that it is being discharged. If this is the other way round due to incorrect installation of the shunt, the current can be "reversed" by a negative factor.
+
+If this value is set to 0, no current will be measured. This can be useful if no shunt is installed, such as in a starter battery where only voltage and temperature need to be monitored. See also [State of charge (Soc)](#state-of-charge-soc).
 
 ### Battery
 #### Type __*__
