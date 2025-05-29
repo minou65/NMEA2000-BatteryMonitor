@@ -133,7 +133,7 @@ void checkConfig() {
 	Serial.printf("    Max current:           %.3f A\n", ina.getMaxCurrent());
 	Serial.printf("    Max shunt voltage:     %.3f V\n", ina.getMaxShuntVoltage());
 	Serial.printf("    Max power:             %.3f W\n", ina.getMaxPower());
-    Serial.printf("    Shunt resistance:      %.3f R\n", gShuntResistanceR);
+    Serial.printf("    Shunt resistance:      %.5f R\n", gShuntResistanceR);
     Serial.printf("    Shunt max current:     %i A\n", gMaxCurrentA);
 
 }
