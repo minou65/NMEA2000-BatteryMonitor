@@ -116,7 +116,7 @@ char CurrentCalibrationFactorValue[NUMBER_LEN];
 char shuntResistanceValue[NUMBER_LEN];
 
 iotwebconf::ParameterGroup ShuntGroup = iotwebconf::ParameterGroup("ShuntGroup","Shunt");
-iotwebconf::NumberParameter shuntResistance = iotwebconf::NumberParameter("Shunt resistance [&#8486;]", "shuntR", shuntResistanceValue, NUMBER_LEN, "0.750", "0..100", "min='0.0001' max='100' step='0.0001'");
+iotwebconf::NumberParameter shuntResistance = iotwebconf::NumberParameter("Shunt resistance [&#8486;]", "shuntR", shuntResistanceValue, NUMBER_LEN, "0.00075", "0..100", "min='0.00001' max='100' step='0.00001'");
 iotwebconf::NumberParameter maxCurrent = iotwebconf::NumberParameter("Expected max current [A]", "maxA", maxCurrentValue, NUMBER_LEN, "100", "1..500", "min='1' max='500' step='1'");
 iotwebconf::NumberParameter VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", "VoltageCalibrationFactor", VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
 iotwebconf::NumberParameter CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", "CurrentCalibrationFactor", CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
@@ -175,6 +175,8 @@ void wifiSetup() {
     Serial.begin(115200);
     Serial.println();
     Serial.println("starting up...");
+
+    ArduinoOTA.setHostname(gCustomName);
 
     ShuntGroup.addItem(&shuntResistance);
     ShuntGroup.addItem(&maxCurrent);
@@ -496,7 +498,7 @@ void handleRoot(AsyncWebServerRequest* request) {
 
 	content_ += fp_.getHtmlFieldset("Shunt configuration").c_str();
 	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 4) + "&#8486;", "shuntResistance").c_str();
+	content_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 5) + "&#8486;", "shuntResistance").c_str();
 	content_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
 	content_ += fp_.getHtmlTableEnd().c_str();
 	content_ += fp_.getHtmlFieldsetEnd().c_str();
