@@ -400,7 +400,7 @@ void handleData(AsyncWebServerRequest* request) {
 	json_ += "\"fullVoltage\":" + String((gFullVoltagemV / 1000.00f), 2) + ",";
 	json_ += "\"fullDelay\":" + String(gFullDelayS) + ",";
 	json_ += "\"currentThreshold\":" + String(gCurrentThreshold, 3) + ",";
-	json_ += "\"shuntResistance\":" + String(gShuntResistanceR, 4) + ",";
+	json_ += "\"shuntResistance\":" + String(gShuntResistanceR, 5) + ",";
 	json_ += "\"maxCurrent\":" + String(gMaxCurrentA) + ",";
 	json_ += "\"voltageCalibrationFactor\":" + String(gVoltageCalibrationFactor) + ","; 
 	json_ += "\"currentCalibrationFactor\":" + String(gCurrentCalibrationFactor) + ",";
