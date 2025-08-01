@@ -176,8 +176,6 @@ void wifiSetup() {
     Serial.println();
     Serial.println("starting up...");
 
-    ArduinoOTA.setHostname(gCustomName);
-
     ShuntGroup.addItem(&shuntResistance);
     ShuntGroup.addItem(&maxCurrent);
     ShuntGroup.addItem(&VoltageCalibrationFactor);
@@ -285,6 +283,7 @@ void wifiSetup() {
     if (APModeOfflineTime > 0) {
         APModeTimer.start(APModeOfflineTime * 60 * 1000);
     }
+
 }
 
 void wifiLoop() {
@@ -695,6 +694,8 @@ void convertParams() {
     gN2KInstance = Config.Instance();
 
     APModeOfflineTime = atoi(APModeOfflineValue);
+
+    ArduinoOTA.setHostname(iotWebConf.getThingName());
 }
 
 void configSaved(){ 
