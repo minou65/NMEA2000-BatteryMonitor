@@ -40,11 +40,11 @@
 		- [Battery](#battery)
 			- [Type __\*__](#type-)
 			- [Voltage __\*__](#voltage-)
-			- [Chemistrie __\*__](#chemistrie-)
+			- [Chemistry __\*__](#chemistry-)
 			- [Capacity __\*__](#capacity-)
 			- [charge efficiency \[%\]](#charge-efficiency-)
-			- [Minimun SOC \[%\]](#minimun-soc-)
-			- [Replacment date](#replacment-date)
+			- [Minimum SOC \[%\]](#minimum-soc-)
+			- [Replacement date](#replacement-date)
 			- [Manufacturer](#manufacturer)
 		- [Battery full detection](#battery-full-detection)
 			- [Voltage when full \[V\] __\*__](#voltage-when-full-v-)
@@ -66,15 +66,15 @@ Here are some key details about the INA226:
 - Shunt Voltage Range (for current measurement): ±82mV
 - The INA226 can handle shunt voltages as low as 60mV and as high as 82mV, depending on the current and the shunt resistor used
 
-The INA226 should be connected to the shunt so that charges going into the battery are positive and those coming out of the battery are negtive.
+The INA226 should be connected to the shunt so that charges going into the battery are positive and those coming out of the battery are negative.
 
  The system communicates via the NMEA 2000 protocol, sending temperature values and alarms as NMEA 2000 messages over an NMEA bus. Configuration is done through a web interface, and real-time values can be viewed on a website. Additionally, there's a link on the configuration page for convenient firmware updates.
 
  ## Disclaimer
  | | |
  |-|-----------------|
- | <img src="img/warning.png" width="100" alt="warning"> | Allways use a fuse in the + line from the battery to the sensor!! |
- | <img src="img/warning.png" width="100" alt="warning"> | Be careful when using metal tools in the vicinity of batteries. Dropping a metal tool onto a battery might cause a short circuit and possibly an explosion.
+ | <img src="img/warning.png" width="100" alt="warning"> | Always use a fuse in the + line from the battery to the sensor!! |
+ | <img src="img/warning.png" width="100" alt="warning"> | Be careful when using metal tools in the vicinity of batteries. Dropping a metal tool onto a battery might cause a short circuit and possibly an explosion. |
 
 ## Schema
 <img src="sch/schema.png" width="600" alt="schema">
@@ -89,19 +89,23 @@ The following PGN's will be send
 
 ## Librarys 
 
-The Software has been created using Visual Studio with the addon Visual Micro. In order to build it you als need some libraries.
+The Software has been created using Visual Studio with the addon Visual Micro. In order to build it you also need some libraries.
 
 - Wire
 - [OneWire (2.3.7)](https://github.com/PaulStoffregen/OneWire)
-- [DallasTemperature(3.9.0)](https://github.com/milesburton/Arduino-Temperature-Control-Library)
+- [DallasTemperature (3.9.0)](https://github.com/milesburton/Arduino-Temperature-Control-Library)
 - [NMEA2000](https://github.com/ttlappalainen/NMEA2000)
-- [NMEA200_ESP32](https://github.com/ttlappalainen/NMEA2000_esp32)
-- [AsyncTCP (3.2.6) __"__](https://github.com/mathieucarbou/AsyncTCP)
+- [NMEA2000_ESP32](https://github.com/ttlappalainen/NMEA2000_esp32)
+- [AsyncTCP (3.2.6) __*__](https://github.com/mathieucarbou/AsyncTCP)
 - [ESPAsyncWebServer (3.3.12) __*__](https://github.com/mathieucarbou/ESPAsyncWebServer)
-- [Webserial (2.0.7) __*__](https://github.com/ayushsharma82/WebSerial)
+- [WebSerial (2.0.7) __*__](https://github.com/ayushsharma82/WebSerial)
 - [IotWebConf](https://github.com/minou65/IotWebConf)
 - [IotWebConfAsync (1.0.2) __*__](https://github.com/minou65/IotWebConfAsync)
 - [IotWebRoot](https://github.com/minou65/IotWebRoot)
+- [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
+- [Preferences](https://github.com/espressif/arduino-esp32/tree/master/libraries/Preferences) (ESP32 built-in)
+- [WiFi](https://github.com/espressif/arduino-esp32/tree/master/libraries/WiFi) (ESP32 built-in)
+- [Update](https://github.com/espressif/arduino-esp32/tree/master/libraries/Update) (ESP32 built-in)
 
 __*__ new version and/or new repo
 
@@ -192,7 +196,7 @@ If you don’t plan to connect the sensor to a WiFi network, you don’t need to
 
 ### NEMA configuration
 #### Instance
-This should be unique at least on one device. May be best to have it unique over all devices sending this PGN. A total of 5 instances are occupied by the device. Starting with the number set here. __*__
+This should be unique at least on one device. May be best to have it unique over all devices sending this PGN. A total of 5 instances are occupied by the device, starting with the number set here. __*__
 
 #### SID
 Sequence identifier. In most cases you can use just 255 for SID. The sequence identifier field is used to tie different PGNs data together to same sampling or calculation time.
@@ -219,7 +223,7 @@ Assuming a voltage of 75 mV at nominal current, the resulting resistance in ohms
 
 
 #### Expected max current [A] __*__
-maximum current that may flow through the shut
+Maximum current that may flow through the shunt
 
 #### Voltage calibration factor
 Use a multimeter to measure the voltage on the battery. The measured voltage divided by the voltage displayed by the battery monitor gives the factor that you enter here.
@@ -249,7 +253,7 @@ one of the following
 
 Please note that the sensor is built for a maximum voltage of 40V without any special measures!
 
-#### Chemistrie __*__
+#### Chemistry __*__
 - lead acid
 - LiIon
 - NiCad
@@ -271,10 +275,10 @@ gas (highly explosive!). The energy stored in the plates can be retrieved during
 Gassing can easily be observed in flooded batteries. Please note that the ‘oxygen only’ end of the charge phase of sealed (VRLA) gel 
 and AGM batteries also results in a reduced charge efficiency.
 
-#### Minimun SOC [%]
+#### Minimum SOC [%]
 The minimum SoC is the lowest level of charge that a battery can safely operate at without damaging its cells or reducing its capacity. It is usually expressed as a percentage of the maximum charge. For example, if a battery has a minimum SoC of 10%, it means that it should not be discharged below 10% of its full capacity.
 
-#### Replacment date
+#### Replacement date
 The replacement date is the date when the battery was replaced with a new one. It is only for documentation
 
 #### Manufacturer
@@ -341,11 +345,11 @@ When in AP mode, the default IP address is 192.168.4.1
 To update the firmware, navigate to the Configuration page and click on the Firmware Update link. Follow the on-screen instructions to complete the update process.
 
 ## Blinking codes
-Prevoius chapters were mentioned blinking patterns, now here is a table summarize the menaning of the blink codes.
+Previous chapters mentioned blinking patterns, now here is a table summarizing the meaning of the blink codes.
 
 | Blinking Pattern | Meaning |
 | --- | --- |
-| Rapid blinking <\br>(mostly on, interrupted by short off periods) | Entered Access Point mode. This means the device creates its own WiFi network. You can connect to the device with your smartphone or WiFi capable computer. |
+| Rapid blinking <br>(mostly on, interrupted by short off periods) | Entered Access Point mode. This means the device creates its own WiFi network. You can connect to the device with your smartphone or WiFi capable computer. |
 | Alternating on/off blinking | Trying to connect to the configured WiFi network. |
 | Mostly off with occasional short flash | The device is online. |
 | Mostly off with occasional long flash | The device is in offline mode |
