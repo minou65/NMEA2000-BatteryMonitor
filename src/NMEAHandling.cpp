@@ -19,7 +19,11 @@ tN2kSyncScheduler DCStatusScheduler(false, 1500, 510);
 tN2kSyncScheduler BatConfScheduler(false, 5000, 520); // Non periodic
 
 // List here messages your device will transmit.
-const unsigned long TransmitMessages[] = { 127506L,127508L,127513L,0 };
+const unsigned long TransmitMessages[] = { 
+	127506L,  // DC Detailed Status
+	127508L,  // Battery Status
+	127513L,  // DC Battery Configuration
+    0 };
 
 int8_t BatTemperatureCoefficient = 53;
 double PeukertExponent = 1.251;
@@ -80,6 +84,8 @@ void N2kInit() {
     // Here we tell library, which PGNs we transmit
     NMEA2000.ExtendTransmitMessages(TransmitMessages);
 
+	NMEA2000.SetConfigurationInformation("", gCustomName, "");
+
     NMEA2000.SetOnOpen(OnN2kOpen);
     NMEA2000.Open();
 }
@@ -117,7 +123,6 @@ void SendN2kBattery(void) {
         SetN2kBatConf(N2kMsg, gN2KInstance, gBatteryType, N2kDCES_Yes, gBatteryVoltage, gBatteryChemistry, AhToCoulomb(gCapacityAh), BatTemperatureCoefficient, PeukertExponent, gChargeEfficiencyPercent);
         NMEA2000.SendMsg(N2kMsg);
     }
-
 }
 
 void N2Kloop() {
