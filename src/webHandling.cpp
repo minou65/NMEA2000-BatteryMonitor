@@ -228,11 +228,13 @@ void wifiSetup() {
     // -- Set up required URL handlers on the web server.
     server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) { handleRoot(request); });
     server.on("/stats", HTTP_GET, [](AsyncWebServerRequest* request) { handleStatistics(request); });
+    
     server.on("/config", HTTP_ANY, [](AsyncWebServerRequest* request) {
-            AsyncWebRequestWrapper asyncWebRequestWrapper(request);
-            iotWebConf.handleConfig(&asyncWebRequestWrapper);
+        auto* asyncWebRequestWrapper = new AsyncWebRequestWrapper(request, 32000);
+        iotWebConf.handleConfig(asyncWebRequestWrapper);
         }
     );
+
     server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest* request) {
             AsyncWebServerResponse* response = request->beginResponse_P(200, "image/x-icon", favicon_ico, sizeof(favicon_ico));
             request->send(response);
@@ -387,6 +389,7 @@ void handleData(AsyncWebServerRequest* request) {
 	else {
 		json_ += "\"tTg\":\"00:00\",";
 	}
+    json_ += "\"mode\":\"" + String(gBattery.current() >= 0 ? "charging" : "discharging") + "\",";
     json_ += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
 	json_ += "\"temperature\":" + String(gBattery.temperatur(), 2) + ",";
 	json_ += "\"batteryType\":\"" + String(BatTypeNames[gBatteryType]) + "\",";
@@ -442,21 +445,21 @@ void handleData(AsyncWebServerRequest* request) {
 class MyHtmlRootFormatProvider : public HtmlRootFormatProvider {
 protected:
     virtual String getScriptInner() {
-        String _s = HtmlRootFormatProvider::getScriptInner();
-        _s.replace("{millisecond}", "5000");
-        _s += F("function updateData(jsonData) {\n");
-        _s += F("   document.getElementById('RSSIValue').innerHTML = jsonData.rssi + \"dBm\" \n");
-		_s += F("   document.getElementById('VoltageValue').innerHTML = jsonData.voltage + \"V\" \n");
-		_s += F("   document.getElementById('CurrentValue').innerHTML = jsonData.current + \"A\" \n");
-		_s += F("   document.getElementById('AverageCurrentValue').innerHTML = jsonData.avgCurrent + \"A\" \n");
-		_s += F("   document.getElementById('SocValue').innerHTML = jsonData.soc + \"%\" \n");
-		_s += F("   document.getElementById('tTgValue').innerHTML = jsonData.tTg + \"h\" \n");
-		_s += F("   document.getElementById('isFullValue').innerHTML = jsonData.isFull \n");
-		_s += F("   document.getElementById('TemperatureValue').innerHTML = jsonData.temperature + \"&deg;C\" \n");
+        String s_ = HtmlRootFormatProvider::getScriptInner();
+        s_.replace("{millisecond}", "5000");
+        s_ += F("function updateData(jsonData) {\n");
+        s_ += F("   document.getElementById('RSSIValue').innerHTML = jsonData.rssi + \"dBm\" \n");
+		s_ += F("   document.getElementById('VoltageValue').innerHTML = jsonData.voltage + \"V\" \n");
+		s_ += F("   document.getElementById('CurrentValue').innerHTML = jsonData.current + \"A\" \n");
+		s_ += F("   document.getElementById('AverageCurrentValue').innerHTML = jsonData.avgCurrent + \"A\" \n");
+		s_ += F("   document.getElementById('SocValue').innerHTML = jsonData.soc + \"%\" \n");
+		s_ += F("   document.getElementById('tTgValue').innerHTML = jsonData.tTg + \"h\" \n");
+		s_ += F("   document.getElementById('isFullValue').innerHTML = jsonData.isFull \n");
+		s_ += F("   document.getElementById('TemperatureValue').innerHTML = jsonData.temperature + \"&deg;C\" \n");
+		s_ += F("   document.getElementById('Mode').innerHTML = jsonData.mode \n");
+        s_ += F("}\n");
 
-        _s += F("}\n");
-
-        return _s;
+        return s_;
     }
 };
 
@@ -466,98 +469,83 @@ void handleRoot(AsyncWebServerRequest* request) {
         return;
     }
 
-    std::string content_;
+    String response_ = "";
     MyHtmlRootFormatProvider fp_;
 
-	content_ += fp_.getHtmlHead(iotWebConf.getThingName()).c_str();
-	content_ += fp_.getHtmlStyle().c_str();
-	content_ += fp_.getHtmlHeadEnd().c_str();
-	content_ += fp_.getHtmlScript().c_str();
-	content_ += fp_.getHtmlTable().c_str();
-    content_ += fp_.getHtmlTableRow().c_str();
-    content_ += fp_.getHtmlTableCol().c_str();
+	response_ += fp_.getHtmlHead(iotWebConf.getThingName());
+	response_ += fp_.getHtmlStyle();
+	response_ += fp_.getHtmlHeadEnd();
+	response_ += fp_.getHtmlScript();
+	response_ += fp_.getHtmlTable();
+    response_ += fp_.getHtmlTableRow();
+    response_ += fp_.getHtmlTableCol();
 
-	content_ += String(F("<fieldset align=left style=\"border: 1px solid\">\n")).c_str();
-	content_ += String(F("<table border=\"0\" align=\"center\" width=\"100%\">\n")).c_str();
-	content_ += String(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n")).c_str();
-	content_ += fp_.getHtmlTableEnd().c_str();
-	content_ += fp_.getHtmlFieldsetEnd().c_str();
+	response_ += String(F("<fieldset align=left style=\"border: 1px solid\">\n"));
+	response_ += String(F("<table border=\"0\" align=\"center\" width=\"100%\">\n"));
+	response_ += String(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n"));
+	response_ += fp_.getHtmlTableEnd();
+	response_ += fp_.getHtmlFieldsetEnd();
 
-	content_ += fp_.getHtmlFieldset("Running values").c_str();
-	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue").c_str();
-	content_ += fp_.getHtmlTableEnd().c_str();
-	content_ += fp_.getHtmlFieldsetEnd().c_str();
+	response_ += fp_.getHtmlFieldset("Running values");
+	response_ += fp_.getHtmlTable();
+	response_ += fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue");
+	response_ += fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue");
+	response_ += fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue");
+	response_ += fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue");
+	response_ += fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue");
+	response_ += fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue");
+	response_ += fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue");
+	response_ += fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode");
+	response_ += fp_.getHtmlTableEnd();
+	response_ += fp_.getHtmlFieldsetEnd();
 
-	content_ += fp_.getHtmlFieldset("Shunt configuration").c_str();
-	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 5) + "&#8486;", "shuntResistance").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent").c_str();
-	content_ += fp_.getHtmlTableEnd().c_str();
-	content_ += fp_.getHtmlFieldsetEnd().c_str();
+	response_ += fp_.getHtmlFieldset("Shunt configuration");
+	response_ += fp_.getHtmlTable();
+	response_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 5) + "&#8486;", "shuntResistance");
+	response_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent");
+	response_ += fp_.getHtmlTableEnd();
+	response_ += fp_.getHtmlFieldsetEnd();
 
-	content_ += fp_.getHtmlFieldset("Battery configuration").c_str();
-	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[gBatteryType]), "BatType").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Capacity:", String(gCapacityAh) + "Ah", "battCapacity").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Efficiency:", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Min SOC:", String(gMinPercent) + "%", "minSoc").c_str();
+	response_ += fp_.getHtmlFieldset("Battery configuration");
+	response_ += fp_.getHtmlTable();
+	response_ += fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[gBatteryType]), "BatType");
+	response_ += fp_.getHtmlTableRowSpan("Capacity:", String(gCapacityAh) + "Ah", "battCapacity");
+	response_ += fp_.getHtmlTableRowSpan("Efficiency:", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency");
+	response_ += fp_.getHtmlTableRowSpan("Min SOC:", String(gMinPercent) + "%", "minSoc");
     float mA_ = gTailCurrentmA;
     float mV_ = gFullVoltagemV;
-    content_ += fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Full delay:", String(gFullDelayS) + "s", "fullDelay").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Manufacturer:", String(BatteryManufacturerValue), "BattManufacturer").c_str();
-	content_ += fp_.getHtmlTableRowSpan("Replacment date:", String(BatteryReplacmentDateValue), "BattDate").c_str();
-	content_ += fp_.getHtmlTableEnd().c_str();
-	content_ += fp_.getHtmlFieldsetEnd().c_str();
+    response_ += fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent");
+	response_ += fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage");
+	response_ += fp_.getHtmlTableRowSpan("Full delay:", String(gFullDelayS) + "s", "fullDelay");
+	response_ += fp_.getHtmlTableRowSpan("Manufacturer:", String(BatteryManufacturerValue), "BattManufacturer");
+	response_ += fp_.getHtmlTableRowSpan("Replacment date:", String(BatteryReplacmentDateValue), "BattDate");
+	response_ += fp_.getHtmlTableEnd();
+	response_ += fp_.getHtmlFieldsetEnd();
 
-	content_ += fp_.getHtmlFieldset("Network").c_str();
-	content_ += fp_.getHtmlTable().c_str();
-	content_ += fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress()).c_str();
-	content_ += fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str()).c_str();
-	content_ += fp_.getHtmlTableEnd().c_str();
-	content_ += fp_.getHtmlFieldsetEnd().c_str();
+	response_ += fp_.getHtmlFieldset("Network");
+	response_ += fp_.getHtmlTable();
+	response_ += fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress());
+	response_ += fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str());
+	response_ += fp_.getHtmlTableEnd();
+	response_ += fp_.getHtmlFieldsetEnd();
 
-	content_ += fp_.addNewLine(2).c_str();
+	response_ += fp_.addNewLine(2);
     
-	content_ += fp_.getHtmlTable().c_str();
-    content_ += fp_.getHtmlTableRowText("<a href = 'setruntime'>Set state of charge</a>").c_str();
-    content_ += fp_.getHtmlTableRowText("<a href = 'stats'>Statistics</a>").c_str();
-	content_ += fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>").c_str();
-    content_ += fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>").c_str();
+	response_ += fp_.getHtmlTable();
+    response_ += fp_.getHtmlTableRowText("<a href = 'setruntime'>Set state of charge</a>");
+    response_ += fp_.getHtmlTableRowText("<a href = 'stats'>Statistics</a>");
+	response_ += fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>");
+    response_ += fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>");
 	
-    content_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)).c_str();
-	content_ += fp_.getHtmlTableEnd().c_str();
+    response_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version));
+	response_ += fp_.getHtmlTableEnd();
 
-    content_ += fp_.getHtmlTableColEnd().c_str();
-    content_ += fp_.getHtmlTableRowEnd().c_str();
-	content_ += fp_.getHtmlTableEnd().c_str();
-	content_ += fp_.getHtmlEnd().c_str();
+    response_ += fp_.getHtmlTableColEnd();
+    response_ += fp_.getHtmlTableRowEnd();
+	response_ += fp_.getHtmlTableEnd();
+	response_ += fp_.getHtmlEnd();
 
-    AsyncWebServerResponse* response = request->beginChunkedResponse("text/html", [content_](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
-
-        std::string chunk_ = "";
-        size_t len_ = min(content_.length() - index, maxLen);
-        if (len_ > 0) {
-            chunk_ = content_.substr(index, len_);
-            chunk_.copy((char*)buffer, chunk_.length());
-        }
-        if (index + len_ <= content_.length())
-            return chunk_.length();
-        else
-            return 0;
-
-        });
-    response->setContentLength(content_.length());
-    response->addHeader("Server", "ESP Async Web Server");
-    request->send(response);
+    request->send(200, "text/html", response_);
 }
 
 
