@@ -8,6 +8,13 @@
 #endif
 
 
+#include <esp_mac.h>
+
+#include <N2kMessages.h>
+#include <NMEA2000.h>
+
+class tNMEA2000;
+extern tNMEA2000& NMEA2000;
 
 extern void N2kInit();
 extern void N2Kloop();

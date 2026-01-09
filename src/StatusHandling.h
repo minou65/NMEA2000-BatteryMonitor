@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "RingBuf.h"
+#include <Preferences.h>
 
 
 static const int MAGICKEY = 0x343332;

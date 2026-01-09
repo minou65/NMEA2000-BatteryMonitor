@@ -9,6 +9,9 @@
 	#include "WProgram.h"
 #endif
 
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
 extern void TemperaturInit();
 extern void TemperaturLoop();
 extern volatile float GetTemperatur();
