@@ -20,8 +20,6 @@
 #include "neotimer.h"
 
 #include <DNSServer.h>
-#include <IotWebConf.h>
-#include <IotWebConfAsyncClass.h>
 #include <IotWebConfAsyncUpdateServer.h>
 #include <IotWebRoot.h>
 
@@ -101,7 +99,7 @@ tN2kBatChem gBatteryChemistry = N2kDCbc_LeadAcid;
 
 
 // -- We can add a legend to the separator
-IotWebConf iotWebConf(gCustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
+AsyncIotWebConf iotWebConf(gCustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
 NMEAConfig Config = NMEAConfig();
 
 char APModeValue[STRING_LEN];
@@ -230,7 +228,7 @@ void wifiSetup() {
     server.on("/stats", HTTP_GET, [](AsyncWebServerRequest* request) { handleStatistics(request); });
     
     server.on("/config", HTTP_ANY, [](AsyncWebServerRequest* request) {
-        auto* asyncWebRequestWrapper = new AsyncWebRequestWrapper(request, 32000);
+        auto* asyncWebRequestWrapper = new AsyncWebRequestWrapper(request);
         iotWebConf.handleConfig(asyncWebRequestWrapper);
         }
     );
