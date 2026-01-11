@@ -26,8 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "WProgram.h"
 #endif
 
-#include <Wire.h>
-
 #define INA226_ADDRESS              (0x40)
 
 #define INA226_REG_CONFIG           (0x00)

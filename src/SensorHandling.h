@@ -7,8 +7,6 @@
 #include "WProgram.h"
 #endif
 
-#include <Wire.h>
-
 extern bool updateSensorConfig;
 
 void sensorInit();
