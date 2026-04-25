@@ -13,14 +13,13 @@
 // Manufacturer's Software version code
 char Version[] = VERSION_STR;
 
-#define WDT_TIMEOUT 5
+// Watchdog timeout in seconds
+#define WDT_TIMEOUT 10
 
 // # define IOTWEBCONF_DEBUG_TO_SERIAL true
 
 // Task handle (Core 0 on ESP32)
 TaskHandle_t TaskHandle;
-
-Neotimer WDtimer = Neotimer(4000);
 
 void setup() {
 
@@ -46,10 +45,17 @@ void setup() {
         0 /* Core where the task should run */
     );
 
-    //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
-    //esp_task_wdt_add(NULL); //add current thread to WDT watch
 
-    //WDtimer.start();
+	// Initialize the Task Watchdog Timer (TWDT) with a timeout of WDT_TIMEOUT seconds
+	// and add the current task to the TWDT. The TWDT will reset the system if the task
+    // fails to reset it within the specified timeout.
+    esp_task_wdt_config_t wdt_config = {
+        .timeout_ms = WDT_TIMEOUT * 1000, // Timeout in Millisekunden
+        .idle_core_mask = (1 << portNUM_PROCESSORS) - 1, // Alle Kerne überwachen
+        .trigger_panic = true
+    };
+    esp_task_wdt_init(&wdt_config);
+    esp_task_wdt_add(NULL);
 }
 
 void loop() {
@@ -64,20 +70,12 @@ void loop() {
 
     gBattery.setTemperatur(GetTemperatur());
 
-    //if(WDtimer.repeat()) {
-	//	esp_task_wdt_reset();
-	//}
+    esp_task_wdt_reset();
 }
 
 void loop2(void* parameter) {
     for (;;) {   // Endless loop
-
         TemperaturLoop();
         vTaskDelay(1000);
-
-        //UBaseType_t stackHighWaterMark = uxTaskGetStackHighWaterMark(NULL);
-        //size_t remainingStackBytes = stackHighWaterMark * sizeof(StackType_t);
-        //Serial.print("Remaining stack space (bytes): "); Serial.println(remainingStackBytes);
-
     }
 }
