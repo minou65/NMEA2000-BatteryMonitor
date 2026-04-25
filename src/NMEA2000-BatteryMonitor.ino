@@ -96,6 +96,7 @@ void loop() {
 void loop2(void* parameter) {
     for (;;) {   // Endless loop
         TemperaturLoop();
+        esp_task_wdt_reset();
         vTaskDelay(1000);
     }
 }
