@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <esp_task_wdt.h>
+#include <Preferences.h>
+#include <esp_system.h>
 
 #include "common.h"
 #include "StatusHandling.h"
@@ -21,6 +23,22 @@ char Version[] = VERSION_STR;
 // Task handle (Core 0 on ESP32)
 TaskHandle_t TaskHandle;
 
+void logRebootReason() {
+    Preferences prefs_;
+    prefs_.begin("system", false);
+
+	// increment reboot count
+    uint32_t rebootCount = prefs_.getUInt("reboots", 0);
+    rebootCount++;
+    prefs_.putUInt("reboots", rebootCount);
+
+	// store last reboot reason
+    esp_reset_reason_t reason = esp_reset_reason();
+    prefs_.putUInt("last_reason", (uint32_t)reason);
+
+    prefs_.end();
+}
+
 void setup() {
 
     Serial.begin(115200);
@@ -28,6 +46,8 @@ void setup() {
         delay(1);
     }
     Serial.println("NMEA2000-BatteryMonitor v" + String(VERSION) + " started");
+
+    logRebootReason();
 
     wifiSetup();
 

@@ -4,6 +4,7 @@
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <Preferences.h>
 #if defined(ESP32)
 #include <WiFi.h>
 // #include <esp_wifi.h>
@@ -468,6 +469,34 @@ protected:
     }
 };
 
+
+uint32_t rebootCount = 0;
+uint32_t lastRebootReason = 0;
+
+void loadRebootInfo() {
+    Preferences prefs_;
+    prefs_.begin("system", true);
+    rebootCount = prefs_.getUInt("reboots", 0);
+    lastRebootReason = prefs_.getUInt("last_reason", 0);
+    prefs_.end();
+}
+
+String getRebootReasonText(uint32_t reason) {
+    switch (reason) {
+    case ESP_RST_POWERON: return "Power-On";
+    case ESP_RST_EXT: return "External reset";
+    case ESP_RST_SW: return "Software reset";
+    case ESP_RST_PANIC: return "Panic";
+    case ESP_RST_INT_WDT: return "Interrupt WDT";
+    case ESP_RST_TASK_WDT: return "Task WDT";
+    case ESP_RST_WDT: return "Other WDT";
+    case ESP_RST_DEEPSLEEP: return "Deep sleep";
+    case ESP_RST_BROWNOUT: return "Brownout";
+    case ESP_RST_SDIO: return "SDIO";
+    default: return "Unknown";
+    }
+}
+
 void handleRoot(AsyncWebServerRequest* request) {
     AsyncWebRequestWrapper asyncWebRequestWrapper(request);
     if (iotWebConf.handleCaptivePortal(&asyncWebRequestWrapper)) {
@@ -536,6 +565,13 @@ void handleRoot(AsyncWebServerRequest* request) {
 	response_ += fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str());
 	response_ += fp_.getHtmlTableEnd();
 	response_ += fp_.getHtmlFieldsetEnd();
+
+    response_ += fp_.getHtmlFieldset("System status");
+    response_ += fp_.getHtmlTable();
+    response_ += fp_.getHtmlTableRowSpan("Number of reboots:", String(rebootCount), "rebootCount");
+    response_ += fp_.getHtmlTableRowSpan("Reboot reason:", getRebootReasonText(lastRebootReason), "rebootReason");
+    response_ += fp_.getHtmlTableEnd();
+    response_ += fp_.getHtmlFieldsetEnd();
 
 	response_ += fp_.addNewLine(2);
     
