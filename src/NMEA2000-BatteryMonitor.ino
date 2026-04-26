@@ -28,15 +28,37 @@ void logRebootReason() {
     prefs_.begin("system", false);
 
 	// increment reboot count
-    uint32_t rebootCount = prefs_.getUInt("reboots", 0);
-    rebootCount++;
-    prefs_.putUInt("reboots", rebootCount);
+    uint32_t rebootCount_ = prefs_.getUInt("reboots", 0);
+    rebootCount_++;
+    prefs_.putUInt("reboots", rebootCount_);
 
 	// store last reboot reason
-    esp_reset_reason_t reason = esp_reset_reason();
-    prefs_.putUInt("last_reason", (uint32_t)reason);
+    esp_reset_reason_t reason_ = esp_reset_reason();
+    prefs_.putUInt("last_reason", (uint32_t)reason_);
 
     prefs_.end();
+
+	Serial.print("Reboot reason: ");
+    switch (reason_) {
+        case ESP_RST_UNKNOWN:    Serial.println("Unknown"); break;
+        case ESP_RST_POWERON:    Serial.println("Power on"); break;
+        case ESP_RST_EXT:        Serial.println("External reset"); break;
+        case ESP_RST_SW:         Serial.println("Software reset"); break;
+        case ESP_RST_PANIC:      Serial.println("Panic reset"); break;
+        case ESP_RST_INT_WDT:    Serial.println("Interrupt watchdog reset"); break;
+        case ESP_RST_TASK_WDT:   Serial.println("Task watchdog reset"); break;
+        case ESP_RST_WDT:        Serial.println("Other watchdog reset"); break;
+        case ESP_RST_DEEPSLEEP:  Serial.println("Deep sleep reset"); break;
+        case ESP_RST_BROWNOUT:   Serial.println("Brownout reset"); break;
+        case ESP_RST_SDIO:       Serial.println("SDIO reset"); break;
+        case ESP_RST_USB:        Serial.println("USB reset"); break;
+        case ESP_RST_JTAG:       Serial.println("JTAG reset"); break;
+        case ESP_RST_EFUSE:      Serial.println("EFUSE reset"); break;
+        case ESP_RST_PWR_GLITCH: Serial.println("Power glitch reset"); break;
+        case ESP_RST_CPU_LOCKUP: Serial.println("CPU lockup reset"); break;
+        default:                Serial.println("Unknown reason code " + String((uint32_t)reason_)); break;
+	}
+	Serial.println("Reboot count: " + String(rebootCount_));
 }
 
 void setup() {
@@ -94,6 +116,7 @@ void loop() {
 }
 
 void loop2(void* parameter) {
+    esp_task_wdt_add(NULL);
     for (;;) {   // Endless loop
         TemperaturLoop();
         esp_task_wdt_reset();
