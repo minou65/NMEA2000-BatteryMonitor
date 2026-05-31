@@ -379,59 +379,43 @@ bool BatteryStatus::readStatsFromRTC() {
 }
 
 void BatteryStatus::writeStats() {
-	WebSerial.printf("%s : BatteryStatus::writeStats\n", getCurrentTime());
-    try {
-		Preferences preferences_;
-		preferences_.begin("BatteryMonitor", false);
+	Preferences prefs_;
+	prefs_.begin("BatteryMonitor", false);
 
-		size_t writtenBytes_ = preferences_.putBytes("stats", &stats, sizeof(stats));
+	size_t writtenBytes_ = prefs_.putBytes("stats", &stats, sizeof(stats));
 
-		if (writtenBytes_ != sizeof(stats)) {
-			Serial.println("Error writing data. Clearing container...");
-			WebSerial.printf("%s : Error writing data. Clearing container...\n", getCurrentTime());
-			preferences_.clear();
-		}
-		else {
-			Serial.printf("Successfully written %d bytes to preferences.\n", writtenBytes_);
-			WebSerial.printf("%s : Successfully written %d bytes to preferences.\n", getCurrentTime(), writtenBytes_);
-		}
-		preferences_.end();
+	if (writtenBytes_ != sizeof(stats)) {
+		prefs_.clear();
+	} else {
+
 	}
-    catch (const std::exception& e) {
-        Serial.printf("Error writing data: %s\n", e.what());
-        WebSerial.printf("%s : Error writing data: %s\n", getCurrentTime(), e.what());
-    }
+	prefs_.end();
 }
-
 
 bool BatteryStatus::readStats() {
-	WebSerial.printf("%s : BatteryStatus::readStats\n", getCurrentTime());
+    Preferences prefs_;
 
-	try {
-		bool res = false;
-		Preferences preferences_;
-		preferences_.begin("BatteryMonitor", true);
-		size_t readBytes_ = preferences_.getBytes("stats", &stats, sizeof(stats));
-		if (readBytes_ == sizeof(stats)) {
-			Serial.printf("BatteryStatus::readStats: Successfully read %d bytes from preferences.\n", readBytes_);
-			WebSerial.printf("%s : Successfully read %d bytes from preferences.\n", getCurrentTime(), readBytes_);
-			res = true;
-		}
-		else {
-			Serial.println("BatteryStatus::readStats: No valid data found");
-			WebSerial.printf("%s : No valid data found\n", getCurrentTime());
-		}
-		preferences_.end();
-		return res;
-	}
-	catch (const std::exception& e) {
-		Serial.printf("Error reading data: %s\n", e.what());
-		WebSerial.printf("%s : Error reading data: %s\n", getCurrentTime(), e.what());
-		return false;
-	}
+    if (!prefs_.begin("BatteryMonitor", false)) {
+        return false;
+    }
+
+    // Avoid Preferences error logs on first boot when key does not exist yet.
+    if (!prefs_.isKey("stats")) {
+        prefs_.end();
+        return false;
+    }
+
+    size_t len = prefs_.getBytesLength("stats");
+    if (len != sizeof(stats)) {
+        prefs_.end();
+        return false;
+    }
+
+    size_t readBytes = prefs_.getBytes("stats", &stats, sizeof(stats));
+    prefs_.end();
+
+    return (readBytes == sizeof(stats));
 }
-
-
 
 #else 
 void BatteryStatus::writeStatsToRTC() {
