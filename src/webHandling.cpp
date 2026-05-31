@@ -4,7 +4,7 @@
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
-#include <Preferences.h>
+
 #if defined(ESP32)
 #include <WiFi.h>
 // #include <esp_wifi.h>
@@ -23,6 +23,7 @@
 #include <DNSServer.h>
 #include <IotWebConfAsyncUpdateServer.h>
 #include <IotWebRoot.h>
+#include <RebootManager.h>
 
 #include <N2kTypes.h>
 
@@ -473,123 +474,100 @@ protected:
 uint32_t rebootCount = 0;
 uint32_t lastRebootReason = 0;
 
-void loadRebootInfo() {
-    Preferences prefs_;
-    prefs_.begin("system", true);
-    rebootCount = prefs_.getUInt("reboots", 0);
-    lastRebootReason = prefs_.getUInt("last_reason", 0);
-    prefs_.end();
-}
-
-String getRebootReasonText(uint32_t reason) {
-    switch (reason) {
-    case ESP_RST_POWERON: return "Power-On";
-    case ESP_RST_EXT: return "External reset";
-    case ESP_RST_SW: return "Software reset";
-    case ESP_RST_PANIC: return "Panic";
-    case ESP_RST_INT_WDT: return "Interrupt WDT";
-    case ESP_RST_TASK_WDT: return "Task WDT";
-    case ESP_RST_WDT: return "Other WDT";
-    case ESP_RST_DEEPSLEEP: return "Deep sleep";
-    case ESP_RST_BROWNOUT: return "Brownout";
-    case ESP_RST_SDIO: return "SDIO";
-    default: return "Unknown";
-    }
-}
-
 void handleRoot(AsyncWebServerRequest* request) {
     AsyncWebRequestWrapper asyncWebRequestWrapper(request);
     if (iotWebConf.handleCaptivePortal(&asyncWebRequestWrapper)) {
         return;
     }
 
-    String response_ = "";
+    AsyncResponseStream* response_ = request->beginResponseStream("text/html", 1024);
     MyHtmlRootFormatProvider fp_;
 
-	response_ += fp_.getHtmlHead(iotWebConf.getThingName());
-    response_ += F("<link rel=\"icon\" type=\"image/png\" sizes=\"96x96\" href=\"/apple-touch-icon.png\">\n");
-    response_ += F("<link rel=\"apple-touch-icon\" sizes=\"96x96\" href=\"/apple-touch-icon.png\">\n");
+	response_->print(fp_.getHtmlHead(iotWebConf.getThingName()));
+    response_->print(F("<link rel=\"icon\" type=\"image/png\" sizes=\"96x96\" href=\"/apple-touch-icon.png\">\n"));
+    response_->print(F("<link rel=\"apple-touch-icon\" sizes=\"96x96\" href=\"/apple-touch-icon.png\">\n"));
 
-	response_ += fp_.getHtmlStyle();
-	response_ += fp_.getHtmlHeadEnd();
-	response_ += fp_.getHtmlScript();
-	response_ += fp_.getHtmlTable();
-    response_ += fp_.getHtmlTableRow();
-    response_ += fp_.getHtmlTableCol();
+	response_->print(fp_.getHtmlStyle());
+	response_->print(fp_.getHtmlHeadEnd());
+	response_->print(fp_.getHtmlScript());
+	response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRow());
+    response_->print(fp_.getHtmlTableCol());
 
-	response_ += String(F("<fieldset align=left style=\"border: 1px solid\">\n"));
-	response_ += String(F("<table border=\"0\" align=\"center\" width=\"100%\">\n"));
-	response_ += String(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n"));
-	response_ += fp_.getHtmlTableEnd();
-	response_ += fp_.getHtmlFieldsetEnd();
+	response_->print(String(F("<fieldset align=left style=\"border: 1px solid\">\n")));
+	response_->print(String(F("<table border=\"0\" align=\"center\" width=\"100%\">\n")));
+	response_->print(String(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n")));
+	response_->print(fp_.getHtmlTableEnd());
+	response_->print(fp_.getHtmlFieldsetEnd());
 
-	response_ += fp_.getHtmlFieldset("Running values");
-	response_ += fp_.getHtmlTable();
-	response_ += fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue");
-	response_ += fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue");
-	response_ += fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue");
-	response_ += fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue");
-	response_ += fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue");
-	response_ += fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue");
-	response_ += fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue");
-	response_ += fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode");
-	response_ += fp_.getHtmlTableEnd();
-	response_ += fp_.getHtmlFieldsetEnd();
+	response_->print(fp_.getHtmlFieldset("Running values"));
+	response_->print(fp_.getHtmlTable());
+	response_->print(fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue"));
+	response_->print(fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue"));
+	response_->print(fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue"));
+	response_->print(fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue"));
+	response_->print(fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue"));
+	response_->print(fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue"));
+	response_->print(fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue"));
+	response_->print(fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode"));
+	response_->print(fp_.getHtmlTableEnd());
+	response_->print(fp_.getHtmlFieldsetEnd());
 
-	response_ += fp_.getHtmlFieldset("Shunt configuration");
-	response_ += fp_.getHtmlTable();
-	response_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 5) + "&#8486;", "shuntResistance");
-	response_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent");
-	response_ += fp_.getHtmlTableEnd();
-	response_ += fp_.getHtmlFieldsetEnd();
+	response_->print(fp_.getHtmlFieldset("Shunt configuration"));
+	response_->print(fp_.getHtmlTable());
+	response_->print(fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 5) + "&#8486;", "shuntResistance"));
+	response_->print(fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent"));
+	response_->print(fp_.getHtmlTableEnd());
+	response_->print(fp_.getHtmlFieldsetEnd());
 
-	response_ += fp_.getHtmlFieldset("Battery configuration");
-	response_ += fp_.getHtmlTable();
-	response_ += fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[gBatteryType]), "BatType");
-	response_ += fp_.getHtmlTableRowSpan("Capacity:", String(gCapacityAh) + "Ah", "battCapacity");
-	response_ += fp_.getHtmlTableRowSpan("Efficiency:", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency");
-	response_ += fp_.getHtmlTableRowSpan("Min SOC:", String(gMinPercent) + "%", "minSoc");
+	response_->print(fp_.getHtmlFieldset("Battery configuration"));
+	response_->print(fp_.getHtmlTable());
+	response_->print(fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[gBatteryType]), "BatType"));
+	response_->print(fp_.getHtmlTableRowSpan("Capacity:", String(gCapacityAh) + "Ah", "battCapacity"));
+	response_->print(fp_.getHtmlTableRowSpan("Efficiency:", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency"));
+	response_->print(fp_.getHtmlTableRowSpan("Min SOC:", String(gMinPercent) + "%", "minSoc"));
     float mA_ = gTailCurrentmA;
     float mV_ = gFullVoltagemV;
-    response_ += fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent");
-	response_ += fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage");
-	response_ += fp_.getHtmlTableRowSpan("Full delay:", String(gFullDelayS) + "s", "fullDelay");
-	response_ += fp_.getHtmlTableRowSpan("Manufacturer:", String(BatteryManufacturerValue), "BattManufacturer");
-	response_ += fp_.getHtmlTableRowSpan("Replacment date:", String(BatteryReplacmentDateValue), "BattDate");
-	response_ += fp_.getHtmlTableEnd();
-	response_ += fp_.getHtmlFieldsetEnd();
+    response_->print(fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent"));
+	response_->print(fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage"));
+	response_->print(fp_.getHtmlTableRowSpan("Full delay:", String(gFullDelayS) + "s", "fullDelay"));
+	response_->print(fp_.getHtmlTableRowSpan("Manufacturer:", String(BatteryManufacturerValue), "BattManufacturer"));
+	response_->print(fp_.getHtmlTableRowSpan("Replacment date:", String(BatteryReplacmentDateValue), "BattDate"));
+	response_->print(fp_.getHtmlTableEnd());
+	response_->print(fp_.getHtmlFieldsetEnd());
 
-	response_ += fp_.getHtmlFieldset("Network");
-	response_ += fp_.getHtmlTable();
-	response_ += fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress());
-	response_ += fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str());
-	response_ += fp_.getHtmlTableEnd();
-	response_ += fp_.getHtmlFieldsetEnd();
+    response_->print(fp_.getHtmlFieldset("System status"));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowSpan("Number of reboots:", String(RebootManager::getRebootCount()), "rebootCount"));
+    response_->print(fp_.getHtmlTableRowSpan("Last reboot reason:", RebootManager::getLastRebootReasonText(), "rebootReason"));
+    response_->print(fp_.getHtmlTableEnd());
+    response_->print(fp_.getHtmlFieldsetEnd());
 
-    response_ += fp_.getHtmlFieldset("System status");
-    response_ += fp_.getHtmlTable();
-    response_ += fp_.getHtmlTableRowSpan("Number of reboots:", String(rebootCount), "rebootCount");
-    response_ += fp_.getHtmlTableRowSpan("Reboot reason:", getRebootReasonText(lastRebootReason), "rebootReason");
-    response_ += fp_.getHtmlTableEnd();
-    response_ += fp_.getHtmlFieldsetEnd();
+	response_->print(fp_.getHtmlFieldset("Network"));
+	response_->print(fp_.getHtmlTable());
+	response_->print(fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress()));
+	response_->print(fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str()));
+	response_->print(fp_.getHtmlTableEnd());
+	response_->print(fp_.getHtmlFieldsetEnd());
 
-	response_ += fp_.addNewLine(2);
+	response_->print(fp_.addNewLine(2));
     
-	response_ += fp_.getHtmlTable();
-    response_ += fp_.getHtmlTableRowText("<a href = 'setruntime'>Set state of charge</a>");
-    response_ += fp_.getHtmlTableRowText("<a href = 'stats'>Statistics</a>");
-	response_ += fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>");
-    response_ += fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>");
+	response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowText("<a href = 'setruntime'>Set state of charge</a>"));
+    response_->print(fp_.getHtmlTableRowText("<a href = 'stats'>Statistics</a>"));
+	response_->print(fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>"));
+    response_->print(fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>"));
 	
-    response_ += fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version));
-	response_ += fp_.getHtmlTableEnd();
+    response_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
+	response_->print(fp_.getHtmlTableEnd());
 
-    response_ += fp_.getHtmlTableColEnd();
-    response_ += fp_.getHtmlTableRowEnd();
-	response_ += fp_.getHtmlTableEnd();
-	response_ += fp_.getHtmlEnd();
+    response_->print(fp_.getHtmlTableColEnd());
+    response_->print(fp_.getHtmlTableRowEnd());
+	response_->print(fp_.getHtmlTableEnd());
+	response_->print(fp_.getHtmlEnd());
 
-    request->send(200, "text/html", response_);
+    response_->addHeader("Server", "ESP Async Web Server");
+    request->send(response_);
 }
 
 
