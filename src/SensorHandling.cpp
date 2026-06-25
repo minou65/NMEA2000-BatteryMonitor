@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <WebSerial.h>
@@ -152,7 +151,7 @@ void setupSensor() {
     }
     // Configure INA226
     ina.configure(INA226_AVERAGES_64, INA226_BUS_CONV_TIME_2116US, INA226_SHUNT_CONV_TIME_2116US, INA226_MODE_SHUNT_BUS_CONT);
-    ina.calibrate(gShuntResistanceR / 1000, gMaxCurrentA);
+    ina.calibrate(gShuntResistanceR, gMaxCurrentA);
     ina.enableConversionReadyAlert();
 
     Serial.printf("calibrate sensor: Shunt resitance = %.5fR, max currenct = %iA\n", gShuntResistanceR, gMaxCurrentA);
@@ -226,7 +225,7 @@ void sensorLoop() {
     if(updateSensorConfig) {
 
         WebSerial.printf("%s : calibrate sensor: Shunt resitance = %.5fR, max currenct = %iA\n", getCurrentTime(), gShuntResistanceR, gMaxCurrentA);
-        ina.calibrate(gShuntResistanceR / 1000, gMaxCurrentA);    
+        ina.calibrate(gShuntResistanceR, gMaxCurrentA);
         gBattery.setParameters(gCapacityAh, gChargeEfficiencyPercent, gMinPercent, gTailCurrentmA, gFullVoltagemV, gFullDelayS);
 
         checkConfig();
