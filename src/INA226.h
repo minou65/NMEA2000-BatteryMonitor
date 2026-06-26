@@ -49,6 +49,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define INA226_BIT_APOL             (0x0002)
 #define INA226_BIT_LEN              (0x0001)
 
+#define INA226_CURRENT_RANGE        (4096.0f)  // 4096.0 / Standard, 8192.0 / fine, 2048.0 / grob, 32768.0 / very fine
+
+
 typedef enum
 {
     INA226_AVERAGES_1             = 0b000,

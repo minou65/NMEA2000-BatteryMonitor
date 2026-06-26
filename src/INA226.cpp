@@ -60,7 +60,7 @@ bool INA226::calibrate(float rShuntValue, float iMaxCurrentExcepted)
 
     float minimumLSB;
 
-    minimumLSB = iMaxCurrentExcepted / 32768;
+    minimumLSB = iMaxCurrentExcepted / INA226_CURRENT_RANGE;
 
     currentLSB = (uint32_t)(minimumLSB * 100000000);
     currentLSB /= 100000000;
@@ -82,7 +82,7 @@ float INA226::getMaxPossibleCurrent(void)
 
 float INA226::getMaxCurrent(void)
 {
-    float maxCurrent = (currentLSB * 32767);
+    float maxCurrent = (currentLSB * INA226_CURRENT_RANGE);
     float maxPossible = getMaxPossibleCurrent();
 
     if (maxCurrent > maxPossible)
