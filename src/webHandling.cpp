@@ -102,7 +102,10 @@ tN2kBatChem gBatteryChemistry = N2kDCbc_LeadAcid;
 
 // -- We can add a legend to the separator
 AsyncIotWebConf iotWebConf(gCustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
-NMEAConfig Config = NMEAConfig();
+NMEAConfig nmeaConfig  = NMEAConfig();
+BatteryConfig batteryConfig = BatteryConfig();
+BatteryFullConfig batteryFullConfig = BatteryFullConfig();
+ShuntConfig shuntConfig = ShuntConfig();
 
 char APModeValue[STRING_LEN];
 iotwebconf::CheckboxParameter APModeParam = iotwebconf::CheckboxParameter("start AP only at boot sequence", "APModeID", APModeValue, STRING_LEN, false);
@@ -110,47 +113,7 @@ iotwebconf::CheckboxParameter APModeParam = iotwebconf::CheckboxParameter("start
 char APModeOfflineValue[STRING_LEN];
 iotwebconf::NumberParameter APModeOfflineParam = iotwebconf::NumberParameter("AP offline mode after (minutes)", "APModeOffline", APModeOfflineValue, NUMBER_LEN, "0", "0..30", "min='0' max='30', step='1'");
 
-char maxCurrentValue[NUMBER_LEN];
-char VoltageCalibrationFactorValue[NUMBER_LEN];
-char CurrentCalibrationFactorValue[NUMBER_LEN];
-char shuntResistanceValue[NUMBER_LEN];
 
-iotwebconf::ParameterGroup ShuntGroup = iotwebconf::ParameterGroup("ShuntGroup","Shunt");
-iotwebconf::NumberParameter shuntResistance = iotwebconf::NumberParameter("Shunt resistance [&#8486;]", "shuntR", shuntResistanceValue, NUMBER_LEN, "0.00075", "0..100", "min='0.00001' max='100' step='0.00001'");
-iotwebconf::NumberParameter maxCurrent = iotwebconf::NumberParameter("Expected max current [A]", "maxA", maxCurrentValue, NUMBER_LEN, "100", "1..500", "min='1' max='500' step='1'");
-iotwebconf::NumberParameter VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", "VoltageCalibrationFactor", VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
-iotwebconf::NumberParameter CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", "CurrentCalibrationFactor", CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
-
-char BatTypeValue[STRING_LEN];
-char BatNomVoltValue[STRING_LEN];
-char BatChemValue[STRING_LEN];
-char battCapacityValue[NUMBER_LEN];
-char chargeEfficiencyValue[NUMBER_LEN];
-char minSocValue[NUMBER_LEN];
-char BatteryReplacmentDateValue[DATE_LEN];
-char BatteryReplacmentTimeValue[TIME_LEN];
-char BatteryManufacturerValue[STRING_LEN];
-iotwebconf::ParameterGroup BatteryGroup = iotwebconf::ParameterGroup("Battery","Battery");
-iotwebconf::SelectParameter BatType        = iotwebconf::SelectParameter("Type", "BatType", BatTypeValue, STRING_LEN, (char*)BatTypeValues, (char*)BatTypeNames, sizeof(BatTypeValues) / STRING_LEN, STRING_LEN, "2");
-iotwebconf::SelectParameter BatNomVoltType = iotwebconf::SelectParameter("Voltage", "BatNomVoltType", BatNomVoltValue, STRING_LEN, (char*)BatNomVoltValues, (char*)BatNomVoltNames, sizeof(BatNomVoltValues) / STRING_LEN, STRING_LEN, "1");
-iotwebconf::SelectParameter BatChemType    = iotwebconf::SelectParameter("Chemistrie", "BatChemType", BatChemValue, STRING_LEN, (char*)BatChemValues, (char*)BatChemNames, sizeof(BatChemValues) / STRING_LEN, STRING_LEN, "0");
-
-iotwebconf::NumberParameter battCapacity = iotwebconf::NumberParameter("Capacity [Ah]", "battAh", battCapacityValue, NUMBER_LEN, "100", "1..300", "min='1' max='300' step='1'");
-iotwebconf::NumberParameter chargeEfficiency = iotwebconf::NumberParameter("charge efficiency [%]", "cheff", chargeEfficiencyValue, NUMBER_LEN, "95", "1..100", "min='1' max='100' step='1'");
-iotwebconf::NumberParameter minSoc = iotwebconf::NumberParameter("Minimun SOC [%]", "minsoc", minSocValue, NUMBER_LEN, "10", "1..100", "min='1' max='100' step='1'");
-iotwebconf::DateParameter BatteryReplacmentDateParameter = iotwebconf::DateParameter("Replacment date", "BattDate", BatteryReplacmentDateValue, DATE_LEN, "2024-01-01");
-iotwebconf::TextParameter BatterymanufacturerParameter = iotwebconf::TextParameter("Manufacturer", "BattManufacturer", BatteryManufacturerValue, STRING_LEN);
-// TimeParameter BatteryReplacmentTimeParameter = TimeParameter("Replacment time", "BattTime", BatteryReplacmentTimeValue, TIME_LEN, "22:00");
-
-char tailCurrentValue[NUMBER_LEN];
-char fullVoltageValue[NUMBER_LEN];
-char fullDelayValue[NUMBER_LEN];
-char CurrentThresholdValue[NUMBER_LEN];
-iotwebconf::ParameterGroup fullGroup = iotwebconf::ParameterGroup("FullD","Battery full detection");
-iotwebconf::NumberParameter tailCurrent = iotwebconf::NumberParameter("Tail current [A]", "tailC", tailCurrentValue, NUMBER_LEN, "1.500", "0..65", "min='0.001' max='65' step='0.001'");
-iotwebconf::NumberParameter fullVoltage = iotwebconf::NumberParameter("Voltage when full [V]", "fullV", fullVoltageValue, NUMBER_LEN, "12.85", "0..38", "min='0.01' max='38' step='0.01'");
-iotwebconf::NumberParameter fullDelay = iotwebconf::NumberParameter("Delay before full [s]", "fullDelay", fullDelayValue, NUMBER_LEN, "60", "1..7200", "min='1' max='7200' step='1'");
-iotwebconf::NumberParameter CurrentThreshold = iotwebconf::NumberParameter("Current threshold [A]", "CurrentThreshold", CurrentThresholdValue, NUMBER_LEN, "0.10", "0.00..2.00", "min='0.00' max='2.00' step='0.01'");
 
 class CustomHtmlFormatProvider : public iotwebconf::HtmlFormatProvider {
 protected:
@@ -176,34 +139,15 @@ void wifiSetup() {
     Serial.println();
     Serial.println("starting up...");
 
-    ShuntGroup.addItem(&shuntResistance);
-    ShuntGroup.addItem(&maxCurrent);
-    ShuntGroup.addItem(&VoltageCalibrationFactor);
-    ShuntGroup.addItem(&CurrentCalibrationFactor);
-
-    BatteryGroup.addItem(&BatType);
-    BatteryGroup.addItem(&BatNomVoltType);
-    BatteryGroup.addItem(&BatChemType);
-    BatteryGroup.addItem(&battCapacity);
-    BatteryGroup.addItem(&chargeEfficiency);
-    BatteryGroup.addItem(&minSoc);
-    BatteryGroup.addItem(&BatteryReplacmentDateParameter);
-    // BatteryGroup.addItem(&BatteryReplacmentTimeParameter);
-    BatteryGroup.addItem(&BatterymanufacturerParameter);
-
-    fullGroup.addItem(&fullVoltage);
-    fullGroup.addItem(&tailCurrent);
-    fullGroup.addItem(&fullDelay);
-    fullGroup.addItem(&CurrentThreshold);
      
     iotWebConf.setStatusPin(STATUS_PIN,ON_LEVEL);
     iotWebConf.setConfigPin(CONFIG_PIN);
     iotWebConf.setHtmlFormatProvider(&customHtmlFormatProvider);
 
-    iotWebConf.addParameterGroup(&Config);
-    iotWebConf.addParameterGroup(&ShuntGroup);
-    iotWebConf.addParameterGroup(&BatteryGroup);
-    iotWebConf.addParameterGroup(&fullGroup);
+    iotWebConf.addParameterGroup(&nmeaConfig);
+    iotWebConf.addParameterGroup(&shuntConfig);
+    iotWebConf.addParameterGroup(&batteryConfig);
+    iotWebConf.addParameterGroup(&batteryFullConfig);
 
     iotWebConf.addSystemParameter(&APModeParam);
     iotWebConf.addSystemParameter(&APModeOfflineParam);
