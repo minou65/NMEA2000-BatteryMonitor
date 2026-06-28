@@ -9,6 +9,7 @@
 
 #include "common.h"
 #include "statusHandling.h"
+#include "webHandling.h"
 
 uint8_t gN2KSource = 22;
 uint8_t gN2KSID = 255;
@@ -91,37 +92,37 @@ void N2kInit() {
 }
 
 void SendN2kBattery(void) {
-    tN2kMsg N2kMsg;
+    tN2kMsg N2kMsg_;
 
-    const Statistics& stats = gBattery.statistics();
+    const Statistics& stats_ = gBattery.statistics();
 
-    unsigned int BatteryTimeToGo = gBattery.tTg();
-    float BatteryCurrent = gBattery.current();
-    float BatteryVoltage = gBattery.voltage();
-    double BatteryAvgConsumption = gBattery.averageCurrent();
-    double BatteryPower = roundf(gBattery.current() * gBattery.voltage());
-    double BatteryTemperature = gBattery.temperatur();
-    double BatteryConsumedAs = roundf(stats.consumedAs / 3.6);
-    double BatterySOC = gBattery.soc();
-    byte BatterIsFull = gBattery.isFull();
+    unsigned int BatteryTimeToGo_ = gBattery.tTg();
+    float BatteryCurrent_ = gBattery.current();
+    float BatteryVoltage_ = gBattery.voltage();
+    double BatteryAvgConsumption_ = gBattery.averageCurrent();
+    double BatteryPower_ = roundf(gBattery.current() * gBattery.voltage());
+    double BatteryTemperature_ = gBattery.temperatur();
+    double BatteryConsumedAs_ = roundf(stats_.consumedAs / 3.6);
+    double BatterySOC_ = gBattery.soc();
+    byte BatterIsFull_ = gBattery.isFull();
     
     if (DCBatStatusScheduler.IsTime()) {
         DCBatStatusScheduler.UpdateNextTime();
-        SetN2kDCBatStatus(N2kMsg, gN2KInstance, BatteryVoltage, BatteryCurrent, CToKelvin(BatteryTemperature), gN2KSID);
-        NMEA2000.SendMsg(N2kMsg);
+        SetN2kDCBatStatus(N2kMsg_, gN2KInstance, BatteryVoltage_, BatteryCurrent_, CToKelvin(BatteryTemperature_), gN2KSID);
+        NMEA2000.SendMsg(N2kMsg_);
     }
 
     if (DCStatusScheduler.IsTime()) {
         DCStatusScheduler.UpdateNextTime();
-        SetN2kDCStatus(N2kMsg, gN2KSID, gN2KInstance, N2kDCt_Battery, static_cast<unsigned char>(BatterySOC * 100), 0, BatteryTimeToGo, BatteryVoltage, AhToCoulomb(gCapacityAh));
+        SetN2kDCStatus(N2kMsg_, gN2KSID, gN2KInstance, N2kDCt_Battery, static_cast<unsigned char>(BatterySOC_ * 100), 0, BatteryTimeToGo_, BatteryVoltage_, AhToCoulomb(gCapacityAh));
 
-        NMEA2000.SendMsg(N2kMsg);
+        NMEA2000.SendMsg(N2kMsg_);
     }
 
     if (BatConfScheduler.IsTime()) {
         BatConfScheduler.UpdateNextTime();
-        SetN2kBatConf(N2kMsg, gN2KInstance, gBatteryType, N2kDCES_Yes, gBatteryVoltage, gBatteryChemistry, AhToCoulomb(gCapacityAh), BatTemperatureCoefficient, PeukertExponent, gChargeEfficiencyPercent);
-        NMEA2000.SendMsg(N2kMsg);
+        SetN2kBatConf(N2kMsg_, gN2KInstance, gBatteryType, N2kDCES_Yes, gBatteryVoltage, gBatteryChemistry, AhToCoulomb(gCapacityAh), BatTemperatureCoefficient, PeukertExponent, gChargeEfficiencyPercent);
+        NMEA2000.SendMsg(N2kMsg_);
     }
 }
 
