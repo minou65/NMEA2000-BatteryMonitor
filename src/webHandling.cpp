@@ -343,20 +343,20 @@ void handleData(AsyncWebServerRequest* request) {
     json_ += "\"mode\":\"" + String(gBattery.current() >= 0 ? "charging" : "discharging") + "\",";
     json_ += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
 	json_ += "\"temperature\":" + String(gBattery.temperatur(), 2) + ",";
-	json_ += "\"batteryType\":\"" + String(BatTypeNames[gBatteryType]) + "\",";
-	json_ += "\"batteryVoltage\":\"" + String(gBatteryVoltage) + "\",";
-	json_ += "\"batteryChemistry\":\"" + String(BatChemNames[gBatteryChemistry]) + "\",";
-	json_ += "\"capacity\":" + String(gCapacityAh) + ",";
-	json_ += "\"chargeEfficiency\":" + String(gChargeEfficiencyPercent) + ",";
-	json_ += "\"minSoc\":" + String(gMinPercent) + ",";
-	json_ += "\"tailCurrent\":" + String((gTailCurrentmA / 1000.00f), 3) + ","; 
-	json_ += "\"fullVoltage\":" + String((gFullVoltagemV / 1000.00f), 2) + ",";
-	json_ += "\"fullDelay\":" + String(gFullDelayS) + ",";
-	json_ += "\"currentThreshold\":" + String(gCurrentThreshold, 3) + ",";
-	json_ += "\"shuntResistance\":" + String(gShuntResistanceR, 5) + ",";
-	json_ += "\"maxCurrent\":" + String(gMaxCurrentA) + ",";
-	json_ += "\"voltageCalibrationFactor\":" + String(gVoltageCalibrationFactor) + ","; 
-	json_ += "\"currentCalibrationFactor\":" + String(gCurrentCalibrationFactor) + ",";
+	json_ += "\"batteryType\":\"" + String(BatTypeNames[batteryConfig.BatType()]) + "\",";
+	json_ += "\"batteryVoltage\":\"" + String(batteryConfig.BatNomVolt()) + "\",";
+	json_ += "\"batteryChemistry\":\"" + String(BatChemNames[batteryConfig.BatChem()]) + "\",";
+	json_ += "\"capacity\":" + String(batteryConfig.BattCapacity_Ah()) + ",";
+	json_ += "\"chargeEfficiency\":" + String(batteryConfig.ChargeEfficiency_Percent()) + ",";
+	json_ += "\"minSoc\":" + String(batteryConfig.MinSoc_Percent()) + ",";
+	json_ += "\"tailCurrent\":" + String((batteryFullConfig.TailCurrent_mA() / 1000.00f), 3) + ","; 
+	json_ += "\"fullVoltage\":" + String((batteryFullConfig.FullVoltage_mV() / 1000.00f), 2) + ",";
+	json_ += "\"fullDelay\":" + String(batteryFullConfig.FullDelay_s()) + ",";
+	json_ += "\"currentThreshold\":" + String(batteryFullConfig.CurrentThreshold_A(), 3) + ",";
+	json_ += "\"shuntResistance\":" + String(shuntConfig.ShuntResistance(), 5) + ",";
+	json_ += "\"maxCurrent\":" + String(shuntConfig.MaxCurrent()) + ",";
+	json_ += "\"voltageCalibrationFactor\":" + String(shuntConfig.VoltageCalibrationFactor()) + ","; 
+	json_ += "\"currentCalibrationFactor\":" + String(shuntConfig.CurrentCalibrationFactor()) + ",";
 
 	json_ += "\"consumedAh\":" + String(gBattery.statistics().consumedAs / 3600.00f, 3) + ","; // Ah
 	json_ += "\"consumedAs\":" + String(gBattery.statistics().consumedAs, 2) + ","; //As
