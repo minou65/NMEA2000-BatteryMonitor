@@ -7,8 +7,6 @@
 #include "WProgram.h"
 #endif
 
-
-
 extern void N2kInit();
 extern void N2Kloop();
 extern void SendN2kBattery();
