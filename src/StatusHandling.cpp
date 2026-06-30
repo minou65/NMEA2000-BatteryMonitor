@@ -6,11 +6,12 @@
 #endif
 
 #include <WebSerial.h>
+#include "BatteryConfig.h"
 
 const double MAX_FLOAT = 3.4E+38; // nax value for float
 const double MIN_FLOAT = -3.4E+38; // min value forfloat
 
-BatteryStatus gBattery;
+BatteryStatus batteryStatus;
 
 BatteryStatus::BatteryStatus() {
     lastCurrent = 0;
@@ -51,7 +52,7 @@ void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiency
         minAs = minPercent * batteryCapacity / 100.0f;
         fullDelay = ((unsigned long)fullDelayS) *1000; 
 
-        if (gCurrentCalibrationFactor < 0) {
+        if (shuntConfig.CurrentCalibrationFactor() < 0) {
             tailCurrent = tailCurrent * -1;
         }
 
@@ -69,7 +70,7 @@ void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiency
 }
 
 void BatteryStatus::updateSOC() {
-    if (gCurrentCalibrationFactor != 0) {
+    if (shuntConfig.CurrentCalibrationFactor() != 0) {
         stats.socVal = stats.remainAs / batteryCapacity;;
     }
     else {

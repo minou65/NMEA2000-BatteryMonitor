@@ -119,4 +119,4 @@ public:
         Statistics stats;
 };
 
-extern BatteryStatus gBattery;
+extern BatteryStatus batteryStatus;
