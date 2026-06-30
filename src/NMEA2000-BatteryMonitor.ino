@@ -24,16 +24,37 @@ void setup() {
     while (!Serial) {
         delay(1);
     }
-    Serial.println("NMEA2000-BatteryMonitor v" + String(VERSION) + " started");
+
+    Serial.println("\n========================================");
+    Serial.println("NMEA2000 battery monitor");
+    Serial.println("========================================");
+    Serial.printf("Firmware version: %s\n", Version);
+    Serial.println("Sensor type: INA226 and DS1820 sensor");
+    Serial.printf("INA226 Alert pin:  GPIO_%d\n", INA226_ALERT_PIN);
+    Serial.printf("INA226 SCL pin:    GPIO_%d\n", INA226_SCL_PIN);
+    Serial.printf("INA226 SDA pin:    GPIO_%d\n", INA226_SDA_PIN);
+    Serial.printf("DS1820 Sensor pin: GPIO_%d\n", ONE_WIRE_BUS);
+    Serial.println("========================================\n");
+
+#ifdef DISABLE_BROWNOUT_DETECTOR
+#include "soc/soc.h"
+#include "soc/rtc_cntl_reg.h"
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
+    Serial.println("Brownout detector disabled via build flag");
+#endif
 
     RebootManager::begin();
 	Serial.printf("Reboot count: %d\n", RebootManager::getRebootCount());
 	Serial.printf("Last reboot reason: %s\n", RebootManager::getLastRebootReasonText().c_str());
 
+    Serial.println("\nInitializing WiFi...");
     wifiSetup();
 
+    Serial.println("\nInitializing sensor...");
     sensorInit();
     TemperaturInit();
+
+    Serial.println("\nSetting up NMEA2000...");
     N2kInit();
 
     xTaskCreatePinnedToCore(
@@ -47,19 +68,25 @@ void setup() {
     );
 
     esp_task_wdt_add(NULL);
+
+    Serial.println("\n========================================");
+    Serial.println("NMEA2000 started");
+    Serial.println("Listening for GPS time on NMEA2000 bus");
+    Serial.println("Setup complete");
+    Serial.println("========================================\n");
 }
 
 void loop() {
-    if (gParamsChanged) {
-        updateSensorConfig = true;
-        gParamsChanged = false;
+    if (ParamsChanged) {
+        updateINA226Config = true;
+        ParamsChanged = false;
     }
 
     wifiLoop();
     sensorLoop();
     N2Kloop();
 
-    gBattery.setTemperatur(GetTemperatur());
+    batteryStatus.setTemperatur(GetTemperatur());
 
     esp_task_wdt_reset();
 }
