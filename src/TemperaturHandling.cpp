@@ -12,9 +12,6 @@
 
 static const float TemperatureCalibrationFactor = 1;
 
-// Data wire is plugged into pin 18 on the Arduino
-#define ONE_WIRE_BUS 18
-
 // Setup a OneWire instance to communicate with any OneWire devices
 OneWire oneWire(ONE_WIRE_BUS);
 
@@ -39,7 +36,7 @@ void TemperaturLoop() {
 
 #ifdef DEBUG_Temperatur
     Serial.print("Temperatur:   ");
-    Serial.println(double(gBattery.temperatur()));
+    Serial.println(double(batteryStatus.temperatur()));
 #endif // DEBUG_Temperatur
 }
 
