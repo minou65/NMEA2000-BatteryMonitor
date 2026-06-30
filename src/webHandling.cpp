@@ -1,5 +1,3 @@
-
-
 // #define DEBUG_WIFI(m) SERIAL_DBG.print(m)
 
 #include <Arduino.h>
@@ -19,6 +17,8 @@
 #include "statusHandling.h"
 #include "favicon.h"
 #include "neotimer.h"
+#include "BatteryConfig.h"
+#include "NMEAConfig.h"
 
 #include <DNSServer.h>
 #include <IotWebConfAsyncUpdateServer.h>
@@ -79,29 +79,16 @@ AsyncWebServerWrapper asyncWebServerWrapper(&server);
 AsyncUpdateServer AsyncUpdater;
 Neotimer APModeTimer = Neotimer();
 
-bool gParamsChanged = true;
-bool gSaveParams = false;
+bool ParamsChanged = true;
+bool SaveParams = false;
 bool startAPMode = true;
 uint8_t APModeOfflineTime = 0;
 bool ShouldReboot = false;
 
-uint16_t gCapacityAh;
-uint16_t gChargeEfficiencyPercent;
-uint16_t gMinPercent;
-uint16_t gTailCurrentmA;
-uint16_t gFullVoltagemV;
-uint16_t gFullDelayS;
-float gCurrentThreshold;
-float gShuntResistanceR;
-uint16_t gMaxCurrentA;
-char gCustomName[64] = "NMEA-Batterymonitor";
-tN2kBatType gBatteryType = N2kDCbt_AGM;
-tN2kBatNomVolt gBatteryVoltage = N2kDCbnv_12v;
-tN2kBatChem gBatteryChemistry = N2kDCbc_LeadAcid;
-
+char CustomName[64] = "NMEA-Batterymonitor";
 
 // -- We can add a legend to the separator
-AsyncIotWebConf iotWebConf(gCustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
+AsyncIotWebConf iotWebConf(CustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
 NMEAConfig nmeaConfig  = NMEAConfig();
 BatteryConfig batteryConfig = BatteryConfig();
 BatteryFullConfig batteryFullConfig = BatteryFullConfig();
@@ -244,13 +231,11 @@ void wifiLoop() {
       iotWebConf.doLoop();
       ArduinoOTA.handle();
 
-    if (gSaveParams) {
+    if (SaveParams) {
         Serial.println(F("Parameters are changed,save them"));
 
-        Config.SetSource(gN2KSource);
-
         iotWebConf.saveConfig();
-        gSaveParams = false;
+        SaveParams = false;
     }
 
     if ((iotWebConf.getState() == iotwebconf::OnLine) && (APModeParam.isChecked()) && startAPMode) {
@@ -265,7 +250,7 @@ void wifiLoop() {
 	}
 
 	if (ShouldReboot || AsyncUpdater.isFinished()) {
-        gBattery.writeStats();
+        batteryStatus.writeStats();
 		delay(1000);
 		ESP.restart();
 	}
@@ -289,15 +274,15 @@ void onSetSoc(AsyncWebServerRequest* request) {
     _soc.trim();
     if (!_soc.isEmpty()) {
         float _socVal = _soc.toInt() / 100.00;
-        gBattery.setBatterySoc(_socVal);
-		gBattery.writeStats();
+        batteryStatus.setBatterySoc(_socVal);
+		batteryStatus.writeStats();
     }
 
     request->send(200, "text/html", SOC_RESPONSE);
 }
 
 void onResetStatistics(AsyncWebServerRequest* request) {
-    gBattery.resetStats();
+    batteryStatus.resetStats();
     request->send(200, "text/html", SOC_RESPONSE);
 }
 
@@ -326,13 +311,13 @@ void handleSetRuntime(AsyncWebServerRequest* request) {
 void handleData(AsyncWebServerRequest* request) {
 	String json_ = "{";
 	json_ += "\"rssi\":" + String(WiFi.RSSI()) + ",";
-	json_ += "\"voltage\":" + String(gBattery.voltage(), 2) + ",";
-	json_ += "\"current\":" + String(gBattery.current(), 2) + ",";
-	json_ += "\"avgCurrent\":" + String(gBattery.averageCurrent(), 2) + ",";
-	json_ += "\"soc\":" + String(gBattery.soc() * 100, 1) + ",";
-	if (gBattery.tTg() != 4294967295) {
-        String hours_ = String(gBattery.tTg() / 3600);
-        String minutes_ = String((gBattery.tTg() % 3600) / 60);
+	json_ += "\"voltage\":" + String(batteryStatus.voltage(), 2) + ",";
+	json_ += "\"current\":" + String(batteryStatus.current(), 2) + ",";
+	json_ += "\"avgCurrent\":" + String(batteryStatus.averageCurrent(), 2) + ",";
+	json_ += "\"soc\":" + String(batteryStatus.soc() * 100, 1) + ",";
+	if (batteryStatus.tTg() != 4294967295) {
+        String hours_ = String(batteryStatus.tTg() / 3600);
+        String minutes_ = String((batteryStatus.tTg() % 3600) / 60);
         if (minutes_.length() < 2) minutes_ = "0" + minutes_;
         if (hours_.length() < 2) hours_ = "0" + hours_;
         json_ += "\"tTg\":\"" + hours_ + ":" + minutes_ + "\",";
@@ -340,13 +325,13 @@ void handleData(AsyncWebServerRequest* request) {
 	else {
 		json_ += "\"tTg\":\"00:00\",";
 	}
-    json_ += "\"mode\":\"" + String(gBattery.current() >= 0 ? "charging" : "discharging") + "\",";
-    json_ += "\"isFull\":\"" + String(gBattery.isFull() ? "true" : "false") + "\",";
-	json_ += "\"temperature\":" + String(gBattery.temperatur(), 2) + ",";
-	json_ += "\"batteryType\":\"" + String(BatTypeNames[batteryConfig.BatType()]) + "\",";
-	json_ += "\"batteryVoltage\":\"" + String(batteryConfig.BatNomVolt()) + "\",";
-	json_ += "\"batteryChemistry\":\"" + String(BatChemNames[batteryConfig.BatChem()]) + "\",";
-	json_ += "\"capacity\":" + String(batteryConfig.BattCapacity_Ah()) + ",";
+    json_ += "\"mode\":\"" + String(batteryStatus.current() >= 0 ? "charging" : "discharging") + "\",";
+    json_ += "\"isFull\":\"" + String(batteryStatus.isFull() ? "true" : "false") + "\",";
+	json_ += "\"temperature\":" + String(batteryStatus.temperatur(), 2) + ",";
+	json_ += "\"batteryType\":\"" + String(BatTypeNames[batteryConfig.Type()]) + "\",";
+	json_ += "\"batteryVoltage\":\"" + String(BatNomVoltNames[batteryConfig.NomVolt()]) + "\",";
+	json_ += "\"batteryChemistry\":\"" + String(BatChemNames[batteryConfig.Chemistry()]) + "\",";
+	json_ += "\"capacity\":" + String(batteryConfig.Capacity_Ah()) + ",";
 	json_ += "\"chargeEfficiency\":" + String(batteryConfig.ChargeEfficiency_Percent()) + ",";
 	json_ += "\"minSoc\":" + String(batteryConfig.MinSoc_Percent()) + ",";
 	json_ += "\"tailCurrent\":" + String((batteryFullConfig.TailCurrent_mA() / 1000.00f), 3) + ","; 
@@ -358,20 +343,20 @@ void handleData(AsyncWebServerRequest* request) {
 	json_ += "\"voltageCalibrationFactor\":" + String(shuntConfig.VoltageCalibrationFactor()) + ","; 
 	json_ += "\"currentCalibrationFactor\":" + String(shuntConfig.CurrentCalibrationFactor()) + ",";
 
-	json_ += "\"consumedAh\":" + String(gBattery.statistics().consumedAs / 3600.00f, 3) + ","; // Ah
-	json_ += "\"consumedAs\":" + String(gBattery.statistics().consumedAs, 2) + ","; //As
-	json_ += "\"deepestDischarge\":" + String(gBattery.statistics().deepestDischarge / 1000.00f, 3) + ","; // Ah
-	json_ += "\"lastDischarge\":" + String(gBattery.statistics().lastDischarge / 1000.00f, 3) + ","; // Ah
-	json_ += "\"averageDischarge\":" + String(gBattery.statistics().averageDischarge / 1000.00f, 3) + ","; //Ah
-	json_ += "\"numChargeCycles\":" + String(gBattery.statistics().numChargeCycles) + ",";
-	json_ += "\"numFullDischarge\":" + String(gBattery.statistics().numFullDischarge) + ",";
-	json_ += "\"sumApHDrawn\":" + String(gBattery.statistics().sumApHDrawn, 3) + ",";  //Ah
-	json_ += "\"minBatVoltage\":" + String(gBattery.statistics().minBatVoltage / 1000.00f, 2) + ","; // V
-	json_ += "\"maxBatVoltage\":" + String(gBattery.statistics().maxBatVoltage / 1000.00f, 2) + ","; // V
+	json_ += "\"consumedAh\":" + String(batteryStatus.statistics().consumedAs / 3600.00f, 3) + ","; // Ah
+	json_ += "\"consumedAs\":" + String(batteryStatus.statistics().consumedAs, 2) + ","; //As
+	json_ += "\"deepestDischarge\":" + String(batteryStatus.statistics().deepestDischarge / 1000.00f, 3) + ","; // Ah
+	json_ += "\"lastDischarge\":" + String(batteryStatus.statistics().lastDischarge / 1000.00f, 3) + ","; // Ah
+	json_ += "\"averageDischarge\":" + String(batteryStatus.statistics().averageDischarge / 1000.00f, 3) + ","; //Ah
+	json_ += "\"numChargeCycles\":" + String(batteryStatus.statistics().numChargeCycles) + ",";
+	json_ += "\"numFullDischarge\":" + String(batteryStatus.statistics().numFullDischarge) + ",";
+	json_ += "\"sumApHDrawn\":" + String(batteryStatus.statistics().sumApHDrawn, 3) + ",";  //Ah
+	json_ += "\"minBatVoltage\":" + String(batteryStatus.statistics().minBatVoltage / 1000.00f, 2) + ","; // V
+	json_ += "\"maxBatVoltage\":" + String(batteryStatus.statistics().maxBatVoltage / 1000.00f, 2) + ","; // V
 
-    String hours2_ = String(gBattery.statistics().secsSinceLastFull / 3600);
-    String minutes2_ = String((gBattery.statistics().secsSinceLastFull % 3600) / 60);
-    String seconds2_ = String(gBattery.statistics().secsSinceLastFull % 60);
+    String hours2_ = String(batteryStatus.statistics().secsSinceLastFull / 3600);
+    String minutes2_ = String((batteryStatus.statistics().secsSinceLastFull % 3600) / 60);
+    String seconds2_ = String(batteryStatus.statistics().secsSinceLastFull % 60);
     if (seconds2_ == "-1") {
         seconds2_ = "0";
     }
@@ -380,14 +365,14 @@ void handleData(AsyncWebServerRequest* request) {
     if (seconds2_.length() < 2) seconds2_ = "0" + seconds2_;
     json_ += "\"TimeSinceLastFull\":\"" + hours2_ + ":" + minutes2_ + ":" + seconds2_ + "\",";
 
-	json_ += "\"secsSinceLastFull\":" + String(gBattery.statistics().secsSinceLastFull) + ",";
-	json_ += "\"numAutoSyncs\":" + String(gBattery.statistics().numAutoSyncs) + ",";
-	json_ += "\"numLowVoltageAlarms\":" + String(gBattery.statistics().numLowVoltageAlarms) + ",";
-	json_ += "\"numHighVoltageAlarms\":" + String(gBattery.statistics().numHighVoltageAlarms) + ",";
-	json_ += "\"amountDischargedEnergy\":" + String(gBattery.statistics().amountDischargedEnergy, 3) + ","; //kWh
-	json_ += "\"amountChargedEnergy\":" + String(gBattery.statistics().amountChargedEnergy, 3) + ","; // kWh
-	json_ += "\"deepestTemperatur\":" + String(gBattery.statistics().deepestTemperatur, 2) + ","; //°C
-	json_ += "\"highestTemperatur\":" + String(gBattery.statistics().highestTemperatur, 2) + ""; //°C
+	json_ += "\"secsSinceLastFull\":" + String(batteryStatus.statistics().secsSinceLastFull) + ",";
+	json_ += "\"numAutoSyncs\":" + String(batteryStatus.statistics().numAutoSyncs) + ",";
+	json_ += "\"numLowVoltageAlarms\":" + String(batteryStatus.statistics().numLowVoltageAlarms) + ",";
+	json_ += "\"numHighVoltageAlarms\":" + String(batteryStatus.statistics().numHighVoltageAlarms) + ",";
+	json_ += "\"amountDischargedEnergy\":" + String(batteryStatus.statistics().amountDischargedEnergy, 3) + ","; //kWh
+	json_ += "\"amountChargedEnergy\":" + String(batteryStatus.statistics().amountChargedEnergy, 3) + ","; // kWh
+	json_ += "\"deepestTemperatur\":" + String(batteryStatus.statistics().deepestTemperatur, 2) + ","; //°C
+	json_ += "\"highestTemperatur\":" + String(batteryStatus.statistics().highestTemperatur, 2) + ""; //°C
 
 	json_ += "}";
 	request->send(200, "application/json", json_);
@@ -459,24 +444,24 @@ void handleRoot(AsyncWebServerRequest* request) {
 
 	response_->print(fp_.getHtmlFieldset("Shunt configuration"));
 	response_->print(fp_.getHtmlTable());
-	response_->print(fp_.getHtmlTableRowSpan("Shunt resistance:", String(gShuntResistanceR, 5) + "&#8486;", "shuntResistance"));
-	response_->print(fp_.getHtmlTableRowSpan("Shunt max current:", String(gMaxCurrentA) + "A", "maxCurrent"));
+	response_->print(fp_.getHtmlTableRowSpan("Shunt resistance:", String(shuntConfig.ShuntResistance(), 5) + "&#8486;", "shuntResistance"));
+	response_->print(fp_.getHtmlTableRowSpan("Shunt max current:", String(shuntConfig.MaxCurrent()) + "A", "maxCurrent"));
 	response_->print(fp_.getHtmlTableEnd());
 	response_->print(fp_.getHtmlFieldsetEnd());
 
 	response_->print(fp_.getHtmlFieldset("Battery configuration"));
 	response_->print(fp_.getHtmlTable());
-	response_->print(fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[gBatteryType]), "BatType"));
-	response_->print(fp_.getHtmlTableRowSpan("Capacity:", String(gCapacityAh) + "Ah", "battCapacity"));
-	response_->print(fp_.getHtmlTableRowSpan("Efficiency:", String(gChargeEfficiencyPercent) + "%", "chargeEfficiency"));
-	response_->print(fp_.getHtmlTableRowSpan("Min SOC:", String(gMinPercent) + "%", "minSoc"));
-    float mA_ = gTailCurrentmA;
-    float mV_ = gFullVoltagemV;
+	response_->print(fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[batteryConfig.Type()]), "BatType"));
+	response_->print(fp_.getHtmlTableRowSpan("Capacity:", String(batteryConfig.Capacity_Ah()) + "Ah", "battCapacity"));
+	response_->print(fp_.getHtmlTableRowSpan("Efficiency:", String(batteryConfig.ChargeEfficiency_Percent()) + "%", "chargeEfficiency"));
+	response_->print(fp_.getHtmlTableRowSpan("Min SOC:", String(batteryConfig.MinSoc_Percent()) + "%", "minSoc"));
+    float mA_ = batteryFullConfig.TailCurrent_mA();
+    float mV_ = batteryFullConfig.FullVoltage_mV();
     response_->print(fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent"));
 	response_->print(fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage"));
-	response_->print(fp_.getHtmlTableRowSpan("Full delay:", String(gFullDelayS) + "s", "fullDelay"));
-	response_->print(fp_.getHtmlTableRowSpan("Manufacturer:", String(BatteryManufacturerValue), "BattManufacturer"));
-	response_->print(fp_.getHtmlTableRowSpan("Replacment date:", String(BatteryReplacmentDateValue), "BattDate"));
+	response_->print(fp_.getHtmlTableRowSpan("Full delay:", String(batteryFullConfig.FullDelay_s()) + "s", "fullDelay"));
+	response_->print(fp_.getHtmlTableRowSpan("Manufacturer:", String(batteryConfig.Manufacturer()), "BattManufacturer"));
+	response_->print(fp_.getHtmlTableRowSpan("Replacment date:", String(batteryConfig.ReplacmentDate()), "BattDate"));
 	response_->print(fp_.getHtmlTableEnd());
 	response_->print(fp_.getHtmlFieldsetEnd());
 
@@ -622,31 +607,6 @@ void handleStatistics(AsyncWebServerRequest* request) {
 }
 
 void convertParams() {
-    gShuntResistanceR = atof(shuntResistanceValue);
-    gMaxCurrentA =atoi(maxCurrentValue); 
-    gCapacityAh = atoi(battCapacityValue);
-    gChargeEfficiencyPercent = atoi(chargeEfficiencyValue);
-    gMinPercent = atoi(minSocValue);
-
-    uint16_t tCv = static_cast<uint16_t>(atof(tailCurrentValue) * 1000);
-    gTailCurrentmA = tCv;
-    
-    uint16_t fVv = static_cast<uint16_t>(atof(fullVoltageValue) * 1000);
-    gFullVoltagemV = fVv;
-
-    gFullDelayS = atoi(fullDelayValue);
-    gBatteryType = tN2kBatType(atoi(BatTypeValue));
-    gBatteryVoltage = tN2kBatNomVolt(atoi(BatNomVoltValue));
-    gBatteryChemistry = tN2kBatChem(atoi(BatChemValue));
-
-    gVoltageCalibrationFactor = atof(VoltageCalibrationFactorValue);
-    gCurrentCalibrationFactor = atof(CurrentCalibrationFactorValue);
-    gCurrentThreshold = atof(CurrentThresholdValue);
-
-    gN2KSource = Config.Source();
-    gN2KSID = Config.SID();
-    gN2KInstance = Config.Instance();
-
     APModeOfflineTime = atoi(APModeOfflineValue);
 
     ArduinoOTA.setHostname(iotWebConf.getThingName());
@@ -654,7 +614,7 @@ void convertParams() {
 
 void configSaved(){ 
   convertParams();
-  gParamsChanged = true;
+  ParamsChanged = true;
   
 
   if (!APModeParam.isChecked()) {
