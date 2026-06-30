@@ -7,7 +7,7 @@
 #include "WProgram.h"
 #endif
 
-extern bool updateSensorConfig;
+extern bool updateINA226Config;
 
 void sensorInit();
 void sensorLoop();
