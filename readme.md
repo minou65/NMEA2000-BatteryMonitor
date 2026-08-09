@@ -77,9 +77,8 @@ The INA226 should be connected to the shunt so that charges going into the batte
  | <img src="img/warning.png" width="100" alt="warning"> | Be careful when using metal tools in the vicinity of batteries. Dropping a metal tool onto a battery might cause a short circuit and possibly an explosion. |
 
 ## Schema
-<img src="sch/schema.png" width="600" alt="schema">
+<img src="sch/NMEA-BatteryMonitor.png" width="600" alt="schema">
 
-<img src="sch/prinzip.png" width="600" alt="pricip schema">
 
 ## NMEA 2000
 The following PGN's will be send
