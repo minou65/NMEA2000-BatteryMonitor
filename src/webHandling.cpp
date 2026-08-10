@@ -59,6 +59,35 @@
 </table>\
 "
 
+const char html_form_end[] PROGMEM = R"=====(
+</br><form action='/reboot' method='get'><button type='submit'>Reboot</button></form>
+</br><form action='/' method='get' style='display:inline;'>
+  <button type='submit'>Home</button>
+  </br>
+</form>
+</br><form action='/post' method='post' style='display:inline;' onsubmit="event.preventDefault(); postReset();">
+  <button type='submit'>Reset to factory defaults</button>
+</form>
+<script>
+function postReset() {
+    fetch('/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'reset=true'
+    })
+    .then(response => {
+        if (response.ok) { 
+            window.location.reload(true);  // Hard reload
+        }
+    })
+    .catch(error => {
+        console.error('Reset fehlgeschlagen:', error);
+        alert('Reset fehlgeschlagen!');
+    });
+}
+</script>
+)=====";
+
 // -- Method declarations.
 void handleSetRuntime(AsyncWebServerRequest* request);
 void onSetSoc(AsyncWebServerRequest* request);
@@ -66,6 +95,8 @@ void onResetStatistics(AsyncWebServerRequest* request);
 void onProgress(size_t prg, size_t sz);
 void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
+void handlePost(AsyncWebServerRequest* request);
+void handleReboot(AsyncWebServerRequest* request);
 void convertParams();
 void connectWifi(const char* ssid, const char* password);
 iotwebconf::WifiAuthInfo* handleConnectWifiFailure();
@@ -101,13 +132,10 @@ char APModeOfflineValue[STRING_LEN];
 iotwebconf::NumberParameter APModeOfflineParam = iotwebconf::NumberParameter("AP offline mode after (minutes)", "APModeOffline", APModeOfflineValue, NUMBER_LEN, "0", "0..30", "min='0' max='30', step='1'");
 
 
-
 class CustomHtmlFormatProvider : public iotwebconf::HtmlFormatProvider {
 protected:
-    virtual String getFormEnd() {
-        String _s = HtmlFormatProvider::getFormEnd();
-        _s += F("</br><form action='/reboot' method='get'><button type='submit'>Reboot</button></form>");
-        _s += F("</br>Return to <a href='/'>home page</a>.");
+    virtual String getFormEnd() override {
+        String _s = HtmlFormatProvider::getFormEnd() + String(FPSTR(html_form_end));
         return _s;
     }
 };
@@ -177,23 +205,8 @@ void wifiSetup() {
     );
     server.on("/data", HTTP_GET, [](AsyncWebServerRequest* request) { handleData(request); });
 
-    server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest* request) {
-        AsyncWebServerResponse* response = request->beginResponse(200, "text/html",
-            "<html>"
-            "<head>"
-            "<meta http-equiv=\"refresh\" content=\"15; url=/\">"
-            "<title>Rebooting...</title>"
-            "</head>"
-            "<body>"
-            "Please wait while the device is rebooting...<br>"
-            "You will be redirected to the homepage shortly."
-            "</body>"
-            "</html>");
-        request->client()->setNoDelay(true); // Disable Nagle's algorithm so the client gets the response immediately
-        request->send(response);
-		ShouldReboot = true;
-        }
-    );
+    server.on("/post", HTTP_ANY, [](AsyncWebServerRequest* request) { handlePost(request); });
+    server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest* request) { handleReboot(request); });
 
 
 
@@ -236,6 +249,7 @@ void wifiLoop() {
 	}
 
 	if (ShouldReboot || AsyncUpdater.isFinished()) {
+		Serial.println(F("Rebooting..."));
         batteryStatus.writeStats();
 		delay(1000);
 		ESP.restart();
@@ -375,8 +389,8 @@ void handleData(AsyncWebServerRequest* request) {
 	json_ += "\"numHighVoltageAlarms\":" + String(batteryStatus.statistics().numHighVoltageAlarms) + ",";
 	json_ += "\"amountDischargedEnergy\":" + String(batteryStatus.statistics().amountDischargedEnergy, 3) + ","; //kWh
 	json_ += "\"amountChargedEnergy\":" + String(batteryStatus.statistics().amountChargedEnergy, 3) + ","; // kWh
-	json_ += "\"deepestTemperatur\":" + String(batteryStatus.statistics().deepestTemperatur, 2) + ","; //°C
-	json_ += "\"highestTemperatur\":" + String(batteryStatus.statistics().highestTemperatur, 2) + ""; //°C
+	json_ += "\"deepestTemperatur\":" + String(batteryStatus.statistics().deepestTemperatur, 2) + ","; //ï¿½C
+	json_ += "\"highestTemperatur\":" + String(batteryStatus.statistics().highestTemperatur, 2) + ""; //ï¿½C
 
 	json_ += "}";
 	request->send(200, "application/json", json_);
@@ -562,38 +576,43 @@ void handleRoot(AsyncWebServerRequest* request) {
     request->send(response_);
 }
 
+void handlePost(AsyncWebServerRequest* request) {
+    if (request->hasParam("reset", true)) {
+        Serial.println(F("Resetting to factory defaults..."));
 
-class MyHtmlRootFormatProviderStatistics : public HtmlRootFormatProvider {
-protected:
-    virtual String getScriptInner() {
-        String _s = HtmlRootFormatProvider::getScriptInner();
-        _s.replace("{millisecond}", "5000");
-        _s += F("function updateData(jsonData) {\n");
-        _s += F("   document.getElementById('minBatVoltage').innerHTML = jsonData.minBatVoltage + \"V\" \n");
-        _s += F("   document.getElementById('maxBatVoltage').innerHTML = jsonData.maxBatVoltage + \"V\" \n");
+		nmeaConfig.applyDefaultValues();
+		shuntConfig.applyDefaultValues();
+		batteryFullConfig.applyDefaultValues();
+		batteryConfig.applyDefaultValues();
 
-        _s += F("   document.getElementById('amountDischargedEnergy').innerHTML = jsonData.amountDischargedEnergy + \"kWh\" \n");
-        _s += F("   document.getElementById('amountChargedEnergy').innerHTML = jsonData.amountChargedEnergy + \"kWh\" \n");
+		APModeOfflineParam.applyDefaultValue();
+		APModeParam.applyDefaultValue();
 
-        //_s += F("   document.getElementById('consumedAh').innerHTML = jsonData.consumedAh + \"Ah\" \n");
-        //_s += F("   document.getElementById('averageDischarge').innerHTML = jsonData.averageDischarge + \"Ah\" \n");
-        _s += F("   document.getElementById('deepestDischarge').innerHTML = jsonData.deepestDischarge + \"Ah\" \n");
-        _s += F("   document.getElementById('lastDischarge').innerHTML = jsonData.lastDischarge + \"Ah\" \n");
+        iotWebConf.saveConfig();
 
-        _s += F("   document.getElementById('deepestTemperatur').innerHTML = jsonData.deepestTemperatur + \"&deg;C\" \n");
-        _s += F("   document.getElementById('highestTemperatur').innerHTML = jsonData.highestTemperatur + \"&deg;C\" \n");
-        _s += F("   document.getElementById('TimeSinceLastFull').innerHTML = jsonData.TimeSinceLastFull\n");
-
-        _s += F("   document.getElementById('numChargeCycles').innerHTML = jsonData.numChargeCycles \n");
-        _s += F("   document.getElementById('numAutoSyncs').innerHTML = jsonData.numAutoSyncs \n");
-
-        _s += F("   document.getElementById('sumApHDrawn').innerHTML = jsonData.sumApHDrawn + \"Ah\" \n");
-
-        _s += F("}\n");
-
-        return _s;
+        request->send(200, "text/plain", "OK");
     }
-};
+    else {
+        request->send(400, "text/plain", "Bad Request");
+    }
+}
+
+void handleReboot(AsyncWebServerRequest* request) {
+    AsyncWebServerResponse* response_ = request->beginResponse(200, "text/html",
+        "<html>"
+        "<head>"
+        "<meta http-equiv=\"refresh\" content=\"15; url=/\">"
+        "<title>Rebooting...</title>"
+        "</head>"
+        "<body>"
+        "Please wait while the device is rebooting...<br>"
+        "You will be redirected to the homepage shortly."
+        "</body>"
+        "</html>");
+    request->client()->setNoDelay(true); // Disable Nagle's algorithm so the client gets the response immediately
+    request->send(response_);
+    ShouldReboot = true;
+}
 
 void convertParams() {
     APModeOfflineTime = atoi(APModeOfflineValue);
