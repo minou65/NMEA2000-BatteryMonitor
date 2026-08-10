@@ -39,6 +39,12 @@ public:
         strncpy(SourceParam.valueBuffer, s.c_str(), NUMBER_LEN);
     }
 
+    void applyDefaultValues() {
+		InstanceParam.applyDefaultValue();
+		SIDParam.applyDefaultValue();
+		SourceParam.applyDefaultValue();
+    }
+
 private:
     iotwebconf::NumberParameter InstanceParam = iotwebconf::NumberParameter("Instance", instanceID, InstanceValue, NUMBER_LEN, "255", "1..255", "min='1' max='254' step='1'");
     iotwebconf::NumberParameter SIDParam = iotwebconf::NumberParameter("SID", sidID, SIDValue, NUMBER_LEN, "255", "1..255", "min='1' max='255' step='1'");
