@@ -402,12 +402,13 @@ FodyWeavers.xsd
 *.sln.iml
 .vscode/settings.json
 /img/Thumbs.db
-<<<<<<< HEAD
 src/*.bin
-=======
->>>>>>> 3bdfd4878abd1023bd62f2882f8212403dc01d9f
-src/NMEA2000-BatteryMonitor.ino.nodemcu-32s.bin
-/src/NMEA2000-BatteryMonitor.ino.nodemcu-32s.bin
 src/board.txt
 /stl/Thumbs.db
 /sch/Thumbs.db
+
+# EAGLE/KiCad backup revisions (keep main schematic/board files)
+*.s#[0-9]*
+*.b#[0-9]*
+!*.sch
+!*.brd
