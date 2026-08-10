@@ -21,26 +21,27 @@
 #include "NMEAConfig.h"
 
 #include <DNSServer.h>
+#include <IotWebConfAsync.h>
 #include <IotWebConfAsyncUpdateServer.h>
-#include <IotWebRoot.h>
+#include <IotWebRootTab.h>
 #include <RebootManager.h>
 
 #include <N2kTypes.h>
 
 #define SOC_RESPONSE \
 "<!DOCTYPE HTML>\
-    <html> <head>\
-            <meta charset=\"UTF-8\">\
-            <meta http-equiv=\"refresh\" content=\"3; url=/\">\
-            <script type=\"text/javascript\">\
-                window.location.href = \"/\"\
-            </script>\
-            <title>SOC set</title>\
-        </head>\
-        <body>\
-            Soc has been updated <br><a href='/'>Back</a>\
-        </body>\
-    </html>\n"
+    <html><head>\
+        <meta charset=\"UTF-8\">\
+        <meta http-equiv=\"refresh\" content=\"2; url=/#battery\">\
+        <script type=\"text/javascript\">\
+            window.location.href = \"/#battery\"\
+        </script>\
+        <title>SOC set</title>\
+    </head>\
+    <body>\
+        SOC has been updated<br><a href='/#battery'>Back to Battery</a>\
+    </body>\
+</html>\n"
 
 #define SOC_FORM \
 "\
@@ -65,7 +66,6 @@ void onResetStatistics(AsyncWebServerRequest* request);
 void onProgress(size_t prg, size_t sz);
 void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
-void handleStatistics(AsyncWebServerRequest* request);
 void convertParams();
 void connectWifi(const char* ssid, const char* password);
 iotwebconf::WifiAuthInfo* handleConnectWifiFailure();
@@ -158,7 +158,6 @@ void wifiSetup() {
 
     // -- Set up required URL handlers on the web server.
     server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) { handleRoot(request); });
-    server.on("/stats", HTTP_GET, [](AsyncWebServerRequest* request) { handleStatistics(request); });
     
     server.on("/config", HTTP_ANY, [](AsyncWebServerRequest* request) {
         auto* asyncWebRequestWrapper = new AsyncWebRequestWrapper(request);
@@ -166,22 +165,8 @@ void wifiSetup() {
         }
     );
 
-    server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest* request) {
-            AsyncWebServerResponse* response = request->beginResponse_P(200, "image/x-icon", favicon_ico, sizeof(favicon_ico));
-            request->send(response);
-        }
-    );
+    IconHandler::registerHandlers(&server, favicon_ico, sizeof(favicon_ico));
 
-    server.on("/apple-touch-icon.png", HTTP_GET, [](AsyncWebServerRequest* request) {
-            AsyncWebServerResponse* response = request->beginResponse_P(200, "image/png", favicon_ico, sizeof(favicon_ico));
-            request->send(response);
-        }
-    );
-
-    server.on("/setruntime", HTTP_GET, [](AsyncWebServerRequest* request) { 
-            handleSetRuntime(request); 
-        }
-    );
     server.on("/setsoc", HTTP_POST, [](AsyncWebServerRequest* request) { 
             onSetSoc(request); 
         }
@@ -224,6 +209,7 @@ void wifiSetup() {
         APModeTimer.start(APModeOfflineTime * 60 * 1000);
     }
 
+    
 }
 
 void wifiLoop() {
@@ -283,7 +269,25 @@ void onSetSoc(AsyncWebServerRequest* request) {
 
 void onResetStatistics(AsyncWebServerRequest* request) {
     batteryStatus.resetStats();
-    request->send(200, "text/html", SOC_RESPONSE);
+    
+    String response_ = F(
+        "<!DOCTYPE HTML>"
+        "<html><head>"
+        "<meta charset=\"UTF-8\">"
+        "<meta http-equiv=\"refresh\" content=\"2; url=/#statistics\">"
+        "<script type=\"text/javascript\">"
+        "window.location.href = \"/#statistics\""
+        "</script>"
+        "<title>Statistics Reset</title>"
+        "</head>"
+        "<body>"
+        "Statistics have been reset<br>"
+        "<a href='/#statistics'>Back to Statistics</a>"
+        "</body>"
+        "</html>"
+    );
+    
+    request->send(200, "text/html", response_);
 }
 
 void handleSetRuntime(AsyncWebServerRequest* request) {
@@ -378,30 +382,41 @@ void handleData(AsyncWebServerRequest* request) {
 	request->send(200, "application/json", json_);
 }
 
-class MyHtmlRootFormatProvider : public HtmlRootFormatProvider {
+class MyHtmlRootFormatProvider : public TabHtmlRootFormatProvider {
 protected:
-    virtual String getScriptInner() {
-        String s_ = HtmlRootFormatProvider::getScriptInner();
+    virtual String getScriptInner() override {
+        String s_ = TabHtmlRootFormatProvider::getScriptInner();
         s_.replace("{millisecond}", "5000");
+        
         s_ += F("function updateData(jsonData) {\n");
         s_ += F("   document.getElementById('RSSIValue').innerHTML = jsonData.rssi + \"dBm\" \n");
-		s_ += F("   document.getElementById('VoltageValue').innerHTML = jsonData.voltage + \"V\" \n");
-		s_ += F("   document.getElementById('CurrentValue').innerHTML = jsonData.current + \"A\" \n");
-		s_ += F("   document.getElementById('AverageCurrentValue').innerHTML = jsonData.avgCurrent + \"A\" \n");
-		s_ += F("   document.getElementById('SocValue').innerHTML = jsonData.soc + \"%\" \n");
-		s_ += F("   document.getElementById('tTgValue').innerHTML = jsonData.tTg + \"h\" \n");
-		s_ += F("   document.getElementById('isFullValue').innerHTML = jsonData.isFull \n");
-		s_ += F("   document.getElementById('TemperatureValue').innerHTML = jsonData.temperature + \"&deg;C\" \n");
-		s_ += F("   document.getElementById('Mode').innerHTML = jsonData.mode \n");
+        s_ += F("   document.getElementById('VoltageValue').innerHTML = jsonData.voltage + \"V\" \n");
+        s_ += F("   document.getElementById('CurrentValue').innerHTML = jsonData.current + \"A\" \n");
+        s_ += F("   document.getElementById('AverageCurrentValue').innerHTML = jsonData.avgCurrent + \"A\" \n");
+        s_ += F("   document.getElementById('SocValue').innerHTML = jsonData.soc + \"%\" \n");
+        s_ += F("   document.getElementById('tTgValue').innerHTML = jsonData.ttg \n");
+        s_ += F("   document.getElementById('isFullValue').innerHTML = jsonData.isFull \n");
+        s_ += F("   document.getElementById('TemperatureValue').innerHTML = jsonData.temperature + \"&deg;C\" \n");
+        s_ += F("   document.getElementById('Mode').innerHTML = jsonData.mode \n");
+        
+        // Statistics Updates
+        s_ += F("   document.getElementById('minBatVoltage').innerHTML = jsonData.minBatVoltage + \"V\" \n");
+        s_ += F("   document.getElementById('maxBatVoltage').innerHTML = jsonData.maxBatVoltage + \"V\" \n");
+        s_ += F("   document.getElementById('amountDischargedEnergy').innerHTML = jsonData.amountDischargedEnergy + \"kWh\" \n");
+        s_ += F("   document.getElementById('amountChargedEnergy').innerHTML = jsonData.amountChargedEnergy + \"kWh\" \n");
+        s_ += F("   document.getElementById('deepestDischarge').innerHTML = jsonData.deepestDischarge + \"Ah\" \n");
+        s_ += F("   document.getElementById('lastDischarge').innerHTML = jsonData.lastDischarge + \"Ah\" \n");
+        s_ += F("   document.getElementById('deepestTemperatur').innerHTML = jsonData.deepestTemperatur + \"&deg;C\" \n");
+        s_ += F("   document.getElementById('highestTemperatur').innerHTML = jsonData.highestTemperatur + \"&deg;C\" \n");
+        s_ += F("   document.getElementById('TimeSinceLastFull').innerHTML = jsonData.TimeSinceLastFull \n");
+        s_ += F("   document.getElementById('numChargeCycles').innerHTML = jsonData.numChargeCycles \n");
+        s_ += F("   document.getElementById('numAutoSyncs').innerHTML = jsonData.numAutoSyncs \n");
+        s_ += F("   document.getElementById('sumApHDrawn').innerHTML = jsonData.sumApHDrawn + \"Ah\" \n");
         s_ += F("}\n");
-
+      
         return s_;
     }
 };
-
-
-uint32_t rebootCount = 0;
-uint32_t lastRebootReason = 0;
 
 void handleRoot(AsyncWebServerRequest* request) {
     AsyncWebRequestWrapper asyncWebRequestWrapper(request);
@@ -412,88 +427,136 @@ void handleRoot(AsyncWebServerRequest* request) {
     AsyncResponseStream* response_ = request->beginResponseStream("text/html", 1024);
     MyHtmlRootFormatProvider fp_;
 
-	response_->print(fp_.getHtmlHead(iotWebConf.getThingName()));
-    response_->print(F("<link rel=\"icon\" type=\"image/png\" sizes=\"96x96\" href=\"/apple-touch-icon.png\">\n"));
-    response_->print(F("<link rel=\"apple-touch-icon\" sizes=\"96x96\" href=\"/apple-touch-icon.png\">\n"));
+    // === 5 Tabs erstellen ===
+    fp_.addTab("Current", "current");
+    fp_.addTab("Statistics", "statistics");
+    fp_.addTab("Shunt", "shunt");
+    fp_.addTab("Battery", "battery");
+    fp_.addTab("System", "system");
 
-	response_->print(fp_.getHtmlStyle());
-	response_->print(fp_.getHtmlHeadEnd());
-	response_->print(fp_.getHtmlScript());
-	response_->print(fp_.getHtmlTable());
-    response_->print(fp_.getHtmlTableRow());
-    response_->print(fp_.getHtmlTableCol());
+    // === TAB 1: Current Values (RSSI + Running Values) ===
+    String currentTab_ = "";
+    currentTab_ += F("<fieldset align=left style=\"border: 1px solid\"><table border=\"0\" align=\"center\" width=\"100%\">");
+    currentTab_ += F("<tr><td align=\"left\">RSSI:</td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr></table></fieldset>");
+    
+    currentTab_ += fp_.getHtmlFieldset("Running values");
+    currentTab_ += fp_.getHtmlTable();
+    currentTab_ += fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue");
+    currentTab_ += fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue");
+    currentTab_ += fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue");
+    currentTab_ += fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue");
+    currentTab_ += fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue");
+    currentTab_ += fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue");
+    currentTab_ += fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue");
+    currentTab_ += fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode");
+    currentTab_ += fp_.getHtmlTableEnd();
+    currentTab_ += fp_.getHtmlFieldsetEnd();
+    fp_.addString(currentTab_, "current");
 
-	response_->print(String(F("<fieldset align=left style=\"border: 1px solid\">\n")));
-	response_->print(String(F("<table border=\"0\" align=\"center\" width=\"100%\">\n")));
-	response_->print(String(F("<tr><td align=\"left\"> </td></td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr>\n")));
-	response_->print(fp_.getHtmlTableEnd());
-	response_->print(fp_.getHtmlFieldsetEnd());
+    // === TAB 2: Statistics ===
+    String statsTab_ = "";
+    statsTab_ += fp_.getHtmlFieldset("Statistics");
+    statsTab_ += fp_.getHtmlTable();
+    statsTab_ += fp_.getHtmlTableRowSpan("Min voltage: ", "no data", "minBatVoltage");
+    statsTab_ += fp_.getHtmlTableRowSpan("Max voltage: ", "no data", "maxBatVoltage");
+    statsTab_ += fp_.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy");
+    statsTab_ += fp_.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy");
+    statsTab_ += fp_.getHtmlTableRowSpan("Total Ah drawn:", "no data", "sumApHDrawn");
+    statsTab_ += fp_.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge");
+    statsTab_ += fp_.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge");
+    statsTab_ += fp_.getHtmlTableRowSpan("Deepest temperature:", "no data", "deepestTemperatur");
+    statsTab_ += fp_.getHtmlTableRowSpan("Highest temperature:", "no data", "highestTemperatur");
+    statsTab_ += fp_.getHtmlTableRowSpan("Time since last full:", "no data", "TimeSinceLastFull");
+    statsTab_ += fp_.getHtmlTableRowSpan("Charge cycles:", "no data", "numChargeCycles");
+    statsTab_ += fp_.getHtmlTableRowSpan("Auto syncs:", "no data", "numAutoSyncs");
+    statsTab_ += fp_.getHtmlTableEnd();
+    statsTab_ += fp_.getHtmlFieldsetEnd();
+    
+    // Reset Button
+    statsTab_ += F("<form method='POST' action='/resetstats'>");
+    statsTab_ += F("<button type='submit' style='margin-top:10px;'>Reset Statistics</button>");
+    statsTab_ += F("</form>");
+    
+    fp_.addString(statsTab_, "statistics");
 
-	response_->print(fp_.getHtmlFieldset("Running values"));
-	response_->print(fp_.getHtmlTable());
-	response_->print(fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue"));
-	response_->print(fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue"));
-	response_->print(fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue"));
-	response_->print(fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue"));
-	response_->print(fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue"));
-	response_->print(fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue"));
-	response_->print(fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue"));
-	response_->print(fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode"));
-	response_->print(fp_.getHtmlTableEnd());
-	response_->print(fp_.getHtmlFieldsetEnd());
+    // === TAB 3: Shunt Configuration ===
+    String shuntTab_ = "";
+    shuntTab_ += fp_.getHtmlFieldset("Shunt configuration");
+    shuntTab_ += fp_.getHtmlTable();
+    shuntTab_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(shuntConfig.ShuntResistance(), 5) + "&#8486;", "shuntResistance");
+    shuntTab_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(shuntConfig.MaxCurrent()) + "A", "maxCurrent");
+    shuntTab_ += fp_.getHtmlTableEnd();
+    shuntTab_ += fp_.getHtmlFieldsetEnd();
+    fp_.addString(shuntTab_, "shunt");
 
-	response_->print(fp_.getHtmlFieldset("Shunt configuration"));
-	response_->print(fp_.getHtmlTable());
-	response_->print(fp_.getHtmlTableRowSpan("Shunt resistance:", String(shuntConfig.ShuntResistance(), 5) + "&#8486;", "shuntResistance"));
-	response_->print(fp_.getHtmlTableRowSpan("Shunt max current:", String(shuntConfig.MaxCurrent()) + "A", "maxCurrent"));
-	response_->print(fp_.getHtmlTableEnd());
-	response_->print(fp_.getHtmlFieldsetEnd());
-
-	response_->print(fp_.getHtmlFieldset("Battery configuration"));
-	response_->print(fp_.getHtmlTable());
-	response_->print(fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[batteryConfig.Type()]), "BatType"));
-	response_->print(fp_.getHtmlTableRowSpan("Capacity:", String(batteryConfig.Capacity_Ah()) + "Ah", "battCapacity"));
-	response_->print(fp_.getHtmlTableRowSpan("Efficiency:", String(batteryConfig.ChargeEfficiency_Percent()) + "%", "chargeEfficiency"));
-	response_->print(fp_.getHtmlTableRowSpan("Min SOC:", String(batteryConfig.MinSoc_Percent()) + "%", "minSoc"));
+    // === TAB 4: Battery Configuration ===
+    String batteryTab_ = "";
+    batteryTab_ += fp_.getHtmlFieldset("Battery configuration");
+    batteryTab_ += fp_.getHtmlTable();
+    batteryTab_ += fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[batteryConfig.Type()]), "BatType");
+    batteryTab_ += fp_.getHtmlTableRowSpan("Capacity:", String(batteryConfig.Capacity_Ah()) + "Ah", "battCapacity");
+    batteryTab_ += fp_.getHtmlTableRowSpan("Efficiency:", String(batteryConfig.ChargeEfficiency_Percent()) + "%", "chargeEfficiency");
+    batteryTab_ += fp_.getHtmlTableRowSpan("Min SOC:", String(batteryConfig.MinSoc_Percent()) + "%", "minSoc");
     float mA_ = batteryFullConfig.TailCurrent_mA();
     float mV_ = batteryFullConfig.FullVoltage_mV();
-    response_->print(fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent"));
-	response_->print(fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage"));
-	response_->print(fp_.getHtmlTableRowSpan("Full delay:", String(batteryFullConfig.FullDelay_s()) + "s", "fullDelay"));
-	response_->print(fp_.getHtmlTableRowSpan("Manufacturer:", String(batteryConfig.Manufacturer()), "BattManufacturer"));
-	response_->print(fp_.getHtmlTableRowSpan("Replacment date:", String(batteryConfig.ReplacmentDate()), "BattDate"));
-	response_->print(fp_.getHtmlTableEnd());
-	response_->print(fp_.getHtmlFieldsetEnd());
+    batteryTab_ += fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent");
+    batteryTab_ += fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage");
+    batteryTab_ += fp_.getHtmlTableRowSpan("Full delay:", String(batteryFullConfig.FullDelay_s()) + "s", "fullDelay");
+    batteryTab_ += fp_.getHtmlTableRowSpan("Manufacturer:", String(batteryConfig.Manufacturer()), "BattManufacturer");
+    batteryTab_ += fp_.getHtmlTableRowSpan("Replacment date:", String(batteryConfig.ReplacmentDate()), "BattDate");
+    batteryTab_ += fp_.getHtmlTableEnd();
+    batteryTab_ += fp_.getHtmlFieldsetEnd();
 
-    response_->print(fp_.getHtmlFieldset("System status"));
-    response_->print(fp_.getHtmlTable());
-    response_->print(fp_.getHtmlTableRowSpan("Number of reboots:", String(RebootManager::getRebootCount()), "rebootCount"));
-    response_->print(fp_.getHtmlTableRowSpan("Last reboot reason:", RebootManager::getLastRebootReasonText(), "rebootReason"));
-    response_->print(fp_.getHtmlTableEnd());
-    response_->print(fp_.getHtmlFieldsetEnd());
+    // Set SOC Form
+    batteryTab_ += fp_.getHtmlFieldset("Set state of charge");
+    batteryTab_ += F("<form method='POST' action='/setsoc'>");
+    batteryTab_ += F("<table border='0' style='width:100%'>");
+    batteryTab_ += F("<tr><td><label for='soc'>New battery SOC:</label></td></tr>");
+    batteryTab_ += F("<tr><td><input type='number' name='soc' id='soc' value='100' min='0' max='100' step='1' style='width:95%' /></td></tr>");
+    batteryTab_ += F("<tr><td><button type='submit' style='margin-top:10px;'>Set SOC</button></td></tr>");
+    batteryTab_ += F("</table>");
+    batteryTab_ += F("</form>");
+    batteryTab_ += fp_.getHtmlFieldsetEnd();
 
-	response_->print(fp_.getHtmlFieldset("Network"));
-	response_->print(fp_.getHtmlTable());
-	response_->print(fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress()));
-	response_->print(fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str()));
-	response_->print(fp_.getHtmlTableEnd());
-	response_->print(fp_.getHtmlFieldsetEnd());
+    fp_.addString(batteryTab_, "battery");
 
-	response_->print(fp_.addNewLine(2));
+    // === TAB 5: System (Reboot Info + Network) ===
+    String systemTab_ = "";
     
-	response_->print(fp_.getHtmlTable());
-    response_->print(fp_.getHtmlTableRowText("<a href = 'setruntime'>Set state of charge</a>"));
-    response_->print(fp_.getHtmlTableRowText("<a href = 'stats'>Statistics</a>"));
-	response_->print(fp_.getHtmlTableRowText("<a href = 'config'>Configuration</a>"));
-    response_->print(fp_.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>"));
-	
-    response_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
-	response_->print(fp_.getHtmlTableEnd());
+    systemTab_ += fp_.getHtmlFieldset("System status");
+    systemTab_ += fp_.getHtmlTable();
+    systemTab_ += fp_.getHtmlTableRowSpan("Number of reboots:", String(RebootManager::getRebootCount()), "rebootCount");
+    systemTab_ += fp_.getHtmlTableRowSpan("Last reboot reason:", RebootManager::getLastRebootReasonText(), "rebootReason");
+    systemTab_ += fp_.getHtmlTableEnd();
+    systemTab_ += fp_.getHtmlFieldsetEnd();
 
-    response_->print(fp_.getHtmlTableColEnd());
-    response_->print(fp_.getHtmlTableRowEnd());
-	response_->print(fp_.getHtmlTableEnd());
-	response_->print(fp_.getHtmlEnd());
+    systemTab_ += fp_.getHtmlFieldset("Network");
+    systemTab_ += fp_.getHtmlTable();
+    systemTab_ += fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress());
+    systemTab_ += fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str());
+    systemTab_ += fp_.getHtmlTableEnd();
+    systemTab_ += fp_.getHtmlFieldsetEnd();
+
+    fp_.addString(systemTab_, "system");
+
+    // === HTML Ausgabe ===
+    response_->print(fp_.getHtmlHead(iotWebConf.getThingName()));
+    response_->print(fp_.getIconLinks());
+    response_->print(fp_.getHtmlStyle());
+    response_->print(fp_.getHtmlHeadEnd());
+    response_->print(fp_.getHtmlScript());
+    response_->print(fp_.getHtmlTabs());
+
+    // Footer
+    response_->print(fp_.addNewLine(2));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowText("<a href='config'>Configuration</a>"));
+    response_->print(fp_.getHtmlTableRowText("<a href='webserial'>Sensor monitoring</a>"));
+    response_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
+    response_->print(fp_.getHtmlTableEnd());
+    
+    response_->print(fp_.getBodyEnd());
+    response_->print(fp_.getHtmlEnd());
 
     response_->addHeader("Server", "ESP Async Web Server");
     request->send(response_);
@@ -531,80 +594,6 @@ protected:
         return _s;
     }
 };
-
-void handleStatistics(AsyncWebServerRequest* request) {
-    std::string _content;
-    MyHtmlRootFormatProviderStatistics _fp;
-
-    _content += _fp.getHtmlHead(iotWebConf.getThingName()).c_str();
-    _content += _fp.getHtmlStyle().c_str();
-    _content += _fp.getHtmlHeadEnd().c_str();
-    _content += _fp.getHtmlScript().c_str();
-    _content += _fp.getHtmlTable().c_str();
-    _content += _fp.getHtmlTableRow().c_str();
-    _content += _fp.getHtmlTableCol().c_str();
-
-    _content += _fp.getHtmlFieldset("Statistics").c_str();
-    _content += _fp.getHtmlTable().c_str();
-
-    _content += _fp.getHtmlTableRowSpan("min Volt: ", "no data", "minBatVoltage").c_str();
-    _content += _fp.getHtmlTableRowSpan("max Volt: ", "no data", "maxBatVoltage").c_str();
-
-    //_content += _fp.getHtmlTableRowSpan("Consumed Ah: ", "no data", "consumedAh").c_str();
-    _content += _fp.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy").c_str();
-    _content += _fp.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy").c_str();
-    //_content += _fp.getHtmlTableRowSpan("Avg. discharged energy:", "no data", "averageDischarge").c_str();
-    _content += _fp.getHtmlTableRowSpan("Total Ah drawn:", "no data", "sumApHDrawn").c_str();
-    
-    _content += _fp.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge").c_str();
-    _content += _fp.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge").c_str();
-
-    _content += _fp.getHtmlTableRowSpan("min Temperatur: ", "no data", "deepestTemperatur").c_str();
-    _content += _fp.getHtmlTableRowSpan("max Temperatur: ", "no data", "highestTemperatur").c_str();
-
-    _content += _fp.getHtmlTableRowSpan("Charge cycles: ", "no data", "numChargeCycles").c_str();
-    _content += _fp.getHtmlTableRowSpan("Auto syncs: ", "no data", "numAutoSyncs").c_str();
-    _content += _fp.getHtmlTableRowSpan("Time since last full:", "no data", "TimeSinceLastFull").c_str();
-
-
-
-    _content += _fp.getHtmlTableEnd().c_str();
-    _content += _fp.getHtmlFieldsetEnd().c_str();
-
-    _content += _fp.addNewLine(2).c_str();
-
-    _content += "<form action = '/resetstats' method = 'get'><button type = 'submit'>Reset statistics</button></form></br>";
-
-    _content += _fp.getHtmlTable().c_str();
-    _content += _fp.getHtmlTableRowText("<a href='/'>Main page</a>").c_str();
-    _content += _fp.getHtmlTableRowText("<a href = 'config'>Configuration</a>").c_str();
-    _content += _fp.getHtmlTableRowText("<a href = 'webserial'>Sensor monitoring</a>").c_str();
-
-    _content += _fp.getHtmlTableEnd().c_str();
-
-    _content += _fp.getHtmlTableColEnd().c_str();
-    _content += _fp.getHtmlTableRowEnd().c_str();
-    _content += _fp.getHtmlTableEnd().c_str();
-    _content += _fp.getHtmlEnd().c_str();
-
-    AsyncWebServerResponse* _response = request->beginChunkedResponse("text/html", [_content](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
-
-        std::string _chunk = "";
-        size_t _len = min(_content.length() - index, maxLen);
-        if (_len > 0) {
-            _chunk = _content.substr(index, _len);
-            _chunk.copy((char*)buffer, _chunk.length());
-        }
-        if (index + _len <= _content.length())
-            return _chunk.length();
-        else
-            return 0;
-
-        });
-    _response->setContentLength(_content.length());
-    _response->addHeader("Server", "ESP Async Web Server");
-    request->send(_response);
-}
 
 void convertParams() {
     APModeOfflineTime = atoi(APModeOfflineValue);
