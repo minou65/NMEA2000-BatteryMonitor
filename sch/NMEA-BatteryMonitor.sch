@@ -132,9 +132,9 @@ DIN A4, landscape with extra doc field</description>
 <sheets>
 <sheet>
 <plain>
-<wire x1="157.48" y1="160.02" x2="157.48" y2="53.34" width="0.1524" layer="94"/>
-<wire x1="157.48" y1="53.34" x2="231.14" y2="53.34" width="0.1524" layer="94"/>
-<wire x1="231.14" y1="53.34" x2="231.14" y2="160.02" width="0.1524" layer="94"/>
+<wire x1="205.74" y1="139.7" x2="205.74" y2="73.66" width="0.1524" layer="94"/>
+<wire x1="205.74" y1="73.66" x2="241.3" y2="73.66" width="0.1524" layer="94"/>
+<wire x1="241.3" y1="73.66" x2="241.3" y2="139.7" width="0.1524" layer="94"/>
 <wire x1="45.72" y1="116.84" x2="45.72" y2="96.52" width="0.1524" layer="94"/>
 <wire x1="45.72" y1="96.52" x2="78.74" y2="96.52" width="0.1524" layer="94"/>
 <wire x1="78.74" y1="96.52" x2="78.74" y2="116.84" width="0.1524" layer="94"/>
@@ -163,13 +163,28 @@ DIN A4, landscape with extra doc field</description>
 <wire x1="54.61" y1="128.778" x2="59.69" y2="128.778" width="0.1524" layer="94"/>
 <wire x1="59.69" y1="128.778" x2="59.69" y2="130.302" width="0.1524" layer="94"/>
 <wire x1="59.69" y1="130.302" x2="54.61" y2="130.302" width="0.1524" layer="94"/>
-<wire x1="157.48" y1="160.02" x2="231.14" y2="160.02" width="0.1524" layer="94"/>
+<wire x1="205.74" y1="139.7" x2="241.3" y2="139.7" width="0.1524" layer="94"/>
 <text x="54.864" y="132.588" size="1.778" layer="95">F1</text>
 <text x="54.864" y="130.556" size="1.778" layer="96">3A</text>
-<text x="185.42" y="119.38" size="1.778" layer="94">Sensor Board</text>
+<text x="206.248" y="140.462" size="1.778" layer="94">Sensor Board</text>
 <text x="99.06" y="147.32" size="1.778" layer="250">+12V und GND vom NMEA Bus 
 dürfen nicht an X1-1 und X1-2 
 angeschlossen werden</text>
+<wire x1="157.48" y1="139.7" x2="157.48" y2="111.76" width="0.1524" layer="94"/>
+<wire x1="157.48" y1="111.76" x2="180.34" y2="111.76" width="0.1524" layer="94"/>
+<wire x1="180.34" y1="111.76" x2="180.34" y2="139.7" width="0.1524" layer="94"/>
+<wire x1="180.34" y1="139.7" x2="157.48" y2="139.7" width="0.1524" layer="94"/>
+<text x="158.75" y="129.032" size="1.778" layer="94">BAT+</text>
+<text x="158.75" y="123.444" size="1.778" layer="94">BAT-</text>
+<text x="172.974" y="128.778" size="1.778" layer="94">OUT+</text>
+<text x="173.482" y="123.444" size="1.778" layer="94">OUT-</text>
+<text x="206.756" y="128.778" size="1.778" layer="94">X1-1</text>
+<text x="206.756" y="124.206" size="1.778" layer="94">X1-2</text>
+<text x="206.502" y="81.28" size="1.778" layer="94">X1-3</text>
+<text x="157.734" y="140.716" size="1.778" layer="94">12V Battery 
+low voltage cut off</text>
+<text x="157.48" y="106.68" size="1.778" layer="94">off: ~10V
+on: ~11V</text>
 </plain>
 <instances>
 <instance part="FRAME1" gate="G$1" x="0" y="0" smashed="yes"/>
@@ -182,14 +197,13 @@ angeschlossen werden</text>
 <busses>
 </busses>
 <nets>
-<net name="X1-2" class="0">
+<net name="BAT-" class="0">
 <segment>
 <wire x1="74.676" y1="119.38" x2="74.676" y2="124.46" width="0.1524" layer="91"/>
 <wire x1="74.676" y1="124.46" x2="103.124" y2="124.46" width="0.1524" layer="91"/>
 <wire x1="103.124" y1="124.46" x2="103.124" y2="106.426" width="0.1524" layer="91"/>
 <wire x1="103.124" y1="124.46" x2="157.48" y2="124.46" width="0.1524" layer="91"/>
 <junction x="103.124" y="124.46"/>
-<label x="149.86" y="124.46" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="X1-3" class="0">
@@ -197,9 +211,8 @@ angeschlossen werden</text>
 <wire x1="102.87" y1="88.9" x2="102.87" y2="81.788" width="0.1524" layer="91"/>
 <wire x1="102.87" y1="81.788" x2="102.87" y2="61.722" width="0.1524" layer="91"/>
 <wire x1="102.87" y1="61.722" x2="102.616" y2="61.722" width="0.1524" layer="91"/>
-<wire x1="102.87" y1="81.788" x2="157.48" y2="81.788" width="0.1524" layer="91"/>
+<wire x1="102.87" y1="81.788" x2="205.74" y2="81.788" width="0.1524" layer="91"/>
 <junction x="102.87" y="81.788"/>
-<label x="148.082" y="82.296" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="N$3" class="0">
@@ -211,10 +224,19 @@ angeschlossen werden</text>
 <junction x="49.53" y="129.54"/>
 </segment>
 </net>
-<net name="X1-1" class="0">
+<net name="BAT+" class="0">
 <segment>
 <wire x1="60.96" y1="129.54" x2="157.48" y2="129.54" width="0.1524" layer="91"/>
-<label x="149.86" y="129.54" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="N$1" class="0">
+<segment>
+<wire x1="180.34" y1="129.54" x2="205.74" y2="129.54" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="N$2" class="0">
+<segment>
+<wire x1="180.34" y1="124.46" x2="205.74" y2="124.46" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
