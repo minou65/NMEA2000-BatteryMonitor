@@ -39,6 +39,13 @@ public:
     float VoltageCalibrationFactor() { return atof(_VoltageCalibrationFactorValue); };
     float CurrentCalibrationFactor() { return atof(_CurrentCalibrationFactorValue); };
 
+    void applyDefaultValues() {
+        _shuntResistance.applyDefaultValue();
+        _maxCurrent.applyDefaultValue();
+        _VoltageCalibrationFactor.applyDefaultValue();
+        _CurrentCalibrationFactor.applyDefaultValue();
+	}
+
 private:
     char _maxCurrentValue[NUMBER_LEN];
     char _VoltageCalibrationFactorValue[NUMBER_LEN];
@@ -75,6 +82,13 @@ public:
     uint16_t FullVoltage_mV() { return (uint16_t)(atof(_fullVoltageValue) * 1000); };
     uint16_t FullDelay_s() { return (uint16_t)atoi(_fullDelayValue); };
     float CurrentThreshold_A() { return atof(_CurrentThresholdValue); };
+
+    void applyDefaultValues() {
+        _tailCurrent.applyDefaultValue();
+        _fullVoltage.applyDefaultValue();
+        _fullDelay.applyDefaultValue();
+        _CurrentThreshold.applyDefaultValue();
+    }
 
 private:
     // Value buffers
@@ -128,6 +142,17 @@ public:
     const char* ReplacmentDate() { return _BatteryReplacmentDateValue; };
     const char* ReplacmentTime() { return _BatteryReplacmentTimeValue; };
     const char* Manufacturer() { return _BatteryManufacturerValue; };
+
+    void applyDefaultValues() {
+        _BatType.applyDefaultValue();
+        _BatNomVoltType.applyDefaultValue();
+        _BatChemType.applyDefaultValue();
+        _battCapacity.applyDefaultValue();
+        _chargeEfficiency.applyDefaultValue();
+        _minSoc.applyDefaultValue();
+        _BatteryReplacmentDateParameter.applyDefaultValue();
+        _BatterymanufacturerParameter.applyDefaultValue();
+    }
 
 private:
     // Value buffers
