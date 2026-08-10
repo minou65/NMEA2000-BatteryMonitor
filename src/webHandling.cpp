@@ -18,6 +18,7 @@
 #include "neotimer.h"
 #include "BatteryConfig.h"
 #include "NMEAConfig.h"
+#include "html.h"
 
 #include <DNSServer.h>
 #include <IotWebConfAsyncTab.h>
@@ -26,66 +27,6 @@
 #include <RebootManager.h>
 
 #include <N2kTypes.h>
-
-#define SOC_RESPONSE \
-"<!DOCTYPE HTML>\
-    <html><head>\
-        <meta charset=\"UTF-8\">\
-        <meta http-equiv=\"refresh\" content=\"2; url=/#battery\">\
-        <script type=\"text/javascript\">\
-            window.location.href = \"/#battery\"\
-        </script>\
-        <title>SOC set</title>\
-    </head>\
-    <body>\
-        SOC has been updated<br><a href='/#battery'>Back to Battery</a>\
-    </body>\
-</html>\n"
-
-#define SOC_FORM \
-"\
-<table border=0 align=center>\
-    <tr><td>\
-        <form align=left action=\"/setsoc\" method=\"POST\">\
-            <fieldset style=\"border: 1px solid\">\
-                <legend>Set state of charge</legend>\
-                <label for=\"soc\">New battery soc</label><br>\
-                <input name=\"soc\" id=\"soc\" value=\"100\" /><br><br>\
-                <button type=\"submit\">Set</button>\
-            </fieldset>\
-        </form>\
-    </td></td>\
-</table>\
-"
-
-const char html_form_end[] PROGMEM = R"=====(
-</br><form action='/reboot' method='get'><button type='submit'>Reboot</button></form>
-</br><form action='/' method='get' style='display:inline;'>
-  <button type='submit'>Home</button>
-  </br>
-</form>
-</br><form action='/post' method='post' style='display:inline;' onsubmit="event.preventDefault(); postReset();">
-  <button type='submit'>Reset to factory defaults</button>
-</form>
-<script>
-function postReset() {
-    fetch('/post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'reset=true'
-    })
-    .then(response => {
-        if (response.ok) { 
-            window.location.reload(true);  // Hard reload
-        }
-    })
-    .catch(error => {
-        console.error('Reset fehlgeschlagen:', error);
-        alert('Reset fehlgeschlagen!');
-    });
-}
-</script>
-)=====";
 
 // -- Method declarations.
 void handleSetRuntime(AsyncWebServerRequest* request);
@@ -129,7 +70,6 @@ iotwebconf::CheckboxParameter APModeParam = iotwebconf::CheckboxParameter("start
 char APModeOfflineValue[STRING_LEN];
 iotwebconf::NumberParameter APModeOfflineParam = iotwebconf::NumberParameter("AP offline mode after (minutes)", "APModeOffline", APModeOfflineValue, NUMBER_LEN, "0", "0..30", "min='0' max='30', step='1'");
 
-
 class CustomHtmlFormatProvider : public AsyncTabHtmlFormatProvider {
 public:
     CustomHtmlFormatProvider(std::vector<AsyncTabInfo>* tabs, int minWidth = 500, int maxWidth = 600)
@@ -138,7 +78,26 @@ public:
 
 protected:
     String getFormEnd() override {
-        return AsyncTabHtmlFormatProvider::getFormEnd() + String(FPSTR(html_form_end));
+        String s_ = AsyncTabHtmlFormatProvider::getFormEnd();
+
+        // Add form end buttons from PROGMEM
+        char buffer_[1024];
+        strcpy_P(buffer_, html_form_end);
+        s_ += buffer_;
+
+        return s_;
+    }
+
+    String getScriptInner() override {
+        String s_ = AsyncTabHtmlFormatProvider::getScriptInner();
+        s_.replace("{millisecond}", "2000");
+
+        // Add updateData function from PROGMEM
+        char buffer_[2048];
+        strcpy_P(buffer_, html_update_data_function);
+        s_ += buffer_;
+
+        return s_;
     }
 };
 CustomHtmlFormatProvider* customHtmlFormatProvider = nullptr;
@@ -287,60 +246,44 @@ void onProgress(size_t prg, size_t sz) {
 }
 
 void onSetSoc(AsyncWebServerRequest* request) {
-    String _soc = request->arg("soc");
-    _soc.trim();
-    if (!_soc.isEmpty()) {
-        float _socVal = _soc.toInt() / 100.00;
-        batteryStatus.setBatterySoc(_socVal);
-		batteryStatus.writeStats();
+    if (!request->hasArg("soc")) {
+        request->send(400, "text/plain", "Missing SOC parameter");
+        return;
     }
 
-    request->send(200, "text/html", SOC_RESPONSE);
+    String socStr_ = request->arg("soc");
+    socStr_.trim();
+
+    if (socStr_.isEmpty()) {
+        request->send(400, "text/plain", "SOC value is empty");
+        return;
+    }
+
+    int socInt_ = socStr_.toInt();
+    if (socInt_ < 0 || socInt_ > 100) {
+        request->send(400, "text/plain", "SOC must be between 0 and 100");
+        return;
+    }
+
+    float socVal_ = socInt_ / 100.0f;
+    batteryStatus.setBatterySoc(socVal_);
+    batteryStatus.writeStats();
+
+    Serial.printf("SOC set to %d%%\n", socInt_);
+    WebSerial.printf("SOC set to %d%%\n", socInt_);
+
+    // Use PROGMEM string from html.h
+    request->send_P(200, "text/html", html_soc_response);
 }
 
 void onResetStatistics(AsyncWebServerRequest* request) {
     batteryStatus.resetStats();
-    
-    String response_ = F(
-        "<!DOCTYPE HTML>"
-        "<html><head>"
-        "<meta charset=\"UTF-8\">"
-        "<meta http-equiv=\"refresh\" content=\"2; url=/#statistics\">"
-        "<script type=\"text/javascript\">"
-        "window.location.href = \"/#statistics\""
-        "</script>"
-        "<title>Statistics Reset</title>"
-        "</head>"
-        "<body>"
-        "Statistics have been reset<br>"
-        "<a href='/#statistics'>Back to Statistics</a>"
-        "</body>"
-        "</html>"
-    );
-    
-    request->send(200, "text/html", response_);
-}
 
-void handleSetRuntime(AsyncWebServerRequest* request) {
+    Serial.println("Statistics reset");
+    WebSerial.println("Statistics reset");
 
-    String page = "<!DOCTYPE html><html lang=\"en\"><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>{v}</title>";
-    page.replace("{v}", "Battery monitor");
-    page += "<style>";
-    page += ".de{background-color:#ffaaaa;} .em{font-size:0.8em;color:#bb0000;padding-bottom:0px;} .c{text-align: center;} div,input,select{padding:5px;font-size:1em;} input{width:95%;} select{width:100%} input[type=checkbox]{width:auto;scale:1.5;margin:10px;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#16A1E7;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} fieldset{border-radius:0.3rem;margin: 0px;}";
-    // page.replace("center", "left");
-    page += "</style>";
-    page += "</head><body>";
-    page += SOC_FORM;
-
-    page += "<table border=0 align=center>";
-    page += "<tr><td align=left>Go to <a href = 'config'>configure page</a> to change configuration.</td></tr>";
-    page += "<tr><td align=left>Go to <a href='/'>main page</a>.</td></tr>";
-    page += "</table>";
-    page += "</body> </html>";
-
-    page += "</body></html>\n";
-
-    request->send(200, "text/html", page);
+    // Use PROGMEM string from html.h
+    request->send_P(200, "text/html", html_stats_reset_response);
 }
 
 void handleData(AsyncWebServerRequest* request) {
@@ -415,36 +358,15 @@ void handleData(AsyncWebServerRequest* request) {
 
 class MyHtmlRootFormatProvider : public TabHtmlRootFormatProvider {
 protected:
-    virtual String getScriptInner() override {
+    String getScriptInner() override {
         String s_ = TabHtmlRootFormatProvider::getScriptInner();
-        s_.replace("{millisecond}", "5000");
-        
-        s_ += F("function updateData(jsonData) {\n");
-        s_ += F("   document.getElementById('RSSIValue').innerHTML = jsonData.rssi + \"dBm\" \n");
-        s_ += F("   document.getElementById('VoltageValue').innerHTML = jsonData.voltage + \"V\" \n");
-        s_ += F("   document.getElementById('CurrentValue').innerHTML = jsonData.current + \"A\" \n");
-        s_ += F("   document.getElementById('AverageCurrentValue').innerHTML = jsonData.avgCurrent + \"A\" \n");
-        s_ += F("   document.getElementById('SocValue').innerHTML = jsonData.soc + \"%\" \n");
-        s_ += F("   document.getElementById('tTgValue').innerHTML = jsonData.ttg \n");
-        s_ += F("   document.getElementById('isFullValue').innerHTML = jsonData.isFull \n");
-        s_ += F("   document.getElementById('TemperatureValue').innerHTML = jsonData.temperature + \"&deg;C\" \n");
-        s_ += F("   document.getElementById('Mode').innerHTML = jsonData.mode \n");
-        
-        // Statistics Updates
-        s_ += F("   document.getElementById('minBatVoltage').innerHTML = jsonData.minBatVoltage + \"V\" \n");
-        s_ += F("   document.getElementById('maxBatVoltage').innerHTML = jsonData.maxBatVoltage + \"V\" \n");
-        s_ += F("   document.getElementById('amountDischargedEnergy').innerHTML = jsonData.amountDischargedEnergy + \"kWh\" \n");
-        s_ += F("   document.getElementById('amountChargedEnergy').innerHTML = jsonData.amountChargedEnergy + \"kWh\" \n");
-        s_ += F("   document.getElementById('deepestDischarge').innerHTML = jsonData.deepestDischarge + \"Ah\" \n");
-        s_ += F("   document.getElementById('lastDischarge').innerHTML = jsonData.lastDischarge + \"Ah\" \n");
-        s_ += F("   document.getElementById('deepestTemperatur').innerHTML = jsonData.deepestTemperatur + \"&deg;C\" \n");
-        s_ += F("   document.getElementById('highestTemperatur').innerHTML = jsonData.highestTemperatur + \"&deg;C\" \n");
-        s_ += F("   document.getElementById('TimeSinceLastFull').innerHTML = jsonData.TimeSinceLastFull \n");
-        s_ += F("   document.getElementById('numChargeCycles').innerHTML = jsonData.numChargeCycles \n");
-        s_ += F("   document.getElementById('numAutoSyncs').innerHTML = jsonData.numAutoSyncs \n");
-        s_ += F("   document.getElementById('sumApHDrawn').innerHTML = jsonData.sumApHDrawn + \"Ah\" \n");
-        s_ += F("}\n");
-      
+        s_.replace("{millisecond}", "2000");
+
+        // Add updateData function from PROGMEM
+        char buffer_[2048];
+        strcpy_P(buffer_, html_update_data_function);
+        s_ += buffer_;
+
         return s_;
     }
 };
