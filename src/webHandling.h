@@ -9,7 +9,7 @@
 #include "WProgram.h"
 #endif
 
-#include <IotWebConfAsync.h>
+#include <IotWebConfAsyncTab.h>
 #include <WebSerial.h>
 #include "common.h"
 
@@ -38,6 +38,6 @@ extern void wifiLoop();
 
 extern void wifiStoreConfig();
 
-extern AsyncIotWebConf iotWebConf;
+extern AsyncIotWebConfTab iotWebConf;
 
 #endif

@@ -9,11 +9,11 @@
 	#include "WProgram.h"
 #endif
 
-#include <IotWebConfAsync.h>
+#include <IotWebConfAsyncTab.h>
 #include <IotWebConfParameter.h>
 #include "common.h"
 
-extern AsyncIotWebConf iotWebConf;
+extern AsyncIotWebConfTab iotWebConf;
 
 class NMEAConfig : public iotwebconf::ParameterGroup {
 public:

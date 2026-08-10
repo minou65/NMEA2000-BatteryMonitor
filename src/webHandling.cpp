@@ -5,7 +5,6 @@
 
 #if defined(ESP32)
 #include <WiFi.h>
-// #include <esp_wifi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
 #else
@@ -21,7 +20,7 @@
 #include "NMEAConfig.h"
 
 #include <DNSServer.h>
-#include <IotWebConfAsync.h>
+#include <IotWebConfAsyncTab.h>
 #include <IotWebConfAsyncUpdateServer.h>
 #include <IotWebRootTab.h>
 #include <RebootManager.h>
@@ -118,8 +117,7 @@ bool ShouldReboot = false;
 
 char CustomName[64] = "NMEA-Batterymonitor";
 
-// -- We can add a legend to the separator
-AsyncIotWebConf iotWebConf(CustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
+AsyncIotWebConfTab iotWebConf(CustomName, &dnsServer, &asyncWebServerWrapper, wifiInitialApPassword, CONFIG_VERSION);
 NMEAConfig nmeaConfig  = NMEAConfig();
 BatteryConfig batteryConfig = BatteryConfig();
 BatteryFullConfig batteryFullConfig = BatteryFullConfig();
@@ -132,14 +130,18 @@ char APModeOfflineValue[STRING_LEN];
 iotwebconf::NumberParameter APModeOfflineParam = iotwebconf::NumberParameter("AP offline mode after (minutes)", "APModeOffline", APModeOfflineValue, NUMBER_LEN, "0", "0..30", "min='0' max='30', step='1'");
 
 
-class CustomHtmlFormatProvider : public iotwebconf::HtmlFormatProvider {
+class CustomHtmlFormatProvider : public AsyncTabHtmlFormatProvider {
+public:
+    CustomHtmlFormatProvider(std::vector<AsyncTabInfo>* tabs, int minWidth = 500, int maxWidth = 600)
+        : AsyncTabHtmlFormatProvider(tabs, minWidth, maxWidth) {
+    }
+
 protected:
-    virtual String getFormEnd() override {
-        String _s = HtmlFormatProvider::getFormEnd() + String(FPSTR(html_form_end));
-        return _s;
+    String getFormEnd() override {
+        return AsyncTabHtmlFormatProvider::getFormEnd() + String(FPSTR(html_form_end));
     }
 };
-CustomHtmlFormatProvider customHtmlFormatProvider;
+CustomHtmlFormatProvider* customHtmlFormatProvider = nullptr;
 
 void wifiStoreConfig() {
     iotWebConf.saveConfig();
@@ -157,15 +159,30 @@ void wifiSetup() {
      
     iotWebConf.setStatusPin(STATUS_PIN,ON_LEVEL);
     iotWebConf.setConfigPin(CONFIG_PIN);
-    iotWebConf.setHtmlFormatProvider(&customHtmlFormatProvider);
 
-    iotWebConf.addParameterGroup(&nmeaConfig);
-    iotWebConf.addParameterGroup(&shuntConfig);
-    iotWebConf.addParameterGroup(&batteryConfig);
-    iotWebConf.addParameterGroup(&batteryFullConfig);
+    // === TABS KONFIGURIEREN ===
+    // System Tab soll an letzter Stelle sein
+    iotWebConf.setSystemTabPosition(-1);  // -1 = letzte Position
+    iotWebConf.setSystemTabName("System");
 
+    // Battery Tab
+    iotWebConf.addParameterGroup(&batteryConfig, "Battery");
+    iotWebConf.addParameterGroup(&batteryFullConfig, "Battery");
+
+    // Shunt Tab
+    iotWebConf.addParameterGroup(&shuntConfig, "Shunt");
+
+    // NMEA Tab
+    iotWebConf.addParameterGroup(&nmeaConfig, "NMEA");
+
+    // System Parameters
     iotWebConf.addSystemParameter(&APModeParam);
     iotWebConf.addSystemParameter(&APModeOfflineParam);
+
+    // CustomHtmlFormatProvider mit Tabs-Vektor erstellen
+    auto customProvider = new CustomHtmlFormatProvider(iotWebConf.getTabsVector());
+    customProvider->setContainerWidth(700, 700);
+    iotWebConf.setHtmlFormatProvider(customProvider);
 
     iotWebConf.setupUpdateServer(
         [](const char* updatePath) { AsyncUpdater.setup(&server, updatePath, onProgress); },
@@ -222,7 +239,7 @@ void wifiSetup() {
         APModeTimer.start(APModeOfflineTime * 60 * 1000);
     }
 
-    
+    Serial.println("Ready.");
 }
 
 void wifiLoop() {
