@@ -486,8 +486,27 @@ void handleRoot(AsyncWebServerRequest* request) {
 
     response_->print(fp_.getHtmlFieldset("Network"));
     response_->print(fp_.getHtmlTable());
-    response_->print(fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress()));
-    response_->print(fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str()));
+
+    uint64_t chipid_ = ESP.getEfuseMac();
+    char macStr_[18];
+    snprintf(macStr_, sizeof(macStr_), "%02X:%02X:%02X:%02X:%02X:%02X",
+        (uint8_t)(chipid_ >> 40), (uint8_t)(chipid_ >> 32),
+        (uint8_t)(chipid_ >> 24), (uint8_t)(chipid_ >> 16),
+        (uint8_t)(chipid_ >> 8), (uint8_t)(chipid_));
+    response_->print(fp_.getHtmlTableRowText("MAC Address:", String(macStr_)));
+
+    String ipAddress_;
+    if (WiFi.getMode() == WIFI_AP || WiFi.getMode() == WIFI_AP_STA) {
+        ipAddress_ = WiFi.softAPIP().toString();
+    }
+    else {
+        ipAddress_ = WiFi.localIP().toString();
+    }
+    if (ipAddress_ == "0.0.0.0" || ipAddress_.isEmpty()) {
+        ipAddress_ = "Not connected";
+    }
+    response_->print(fp_.getHtmlTableRowText("IP Address:", ipAddress_));
+
     response_->print(fp_.getHtmlTableEnd());
     response_->print(fp_.getHtmlFieldsetEnd());
     response_->print(fp_.getHtmlTabContentEnd());
