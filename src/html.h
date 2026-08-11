@@ -71,12 +71,13 @@ const char html_stats_reset_response[] PROGMEM = R"=====(
 
 const char html_form_end[] PROGMEM = R"=====(
 <br>
-<form action='/reboot' method='get' style='display:inline;'>
-  <button type='submit'>Reboot</button>
-</form>
+<form action='/reboot' method='get'><button type='submit'>Reboot</button></form>
+<br>
 <form action='/' method='get' style='display:inline;'>
   <button type='submit'>Home</button>
+  <br>
 </form>
+<br>
 <form action='/post' method='post' style='display:inline;' onsubmit="event.preventDefault(); postReset();">
   <button type='submit' class='danger'>Reset to Factory Defaults</button>
 </form>
@@ -92,7 +93,7 @@ function postReset() {
     })
     .then(response => {
         if (response.ok) { 
-            alert('Reset successful. Device will reboot.');
+            alert('Reset successful.');
             window.location.reload(true);
         } else {
             alert('Reset failed!');
