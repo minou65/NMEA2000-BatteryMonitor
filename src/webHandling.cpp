@@ -387,19 +387,18 @@ void handleRoot(AsyncWebServerRequest* request) {
     fp_.addTab("Battery", "battery");
     fp_.addTab("System", "system");
 
-    // Header wird sofort gesendet (gechunkt)
     response_->print(fp_.getHtmlHead(iotWebConf.getThingName()));
     response_->print(fp_.getIconLinks());
     response_->print(fp_.getHtmlStyle());
     response_->print(fp_.getHtmlHeadEnd());
     response_->print(fp_.getHtmlScript());
-    response_->print(fp_.getHtmlTabs());
+    response_->print(fp_.getHtmlTabButtons());
 
-    // === TAB 1: Current Values - wird direkt gestreamt ===
-    response_->print(F("<div id=\"current\" class=\"tabcontent\">"));
+    // === Current Tab
+    response_->print(fp_.getHtmlTabContentStart("current"));
     response_->print(F("<fieldset align=left style=\"border: 1px solid\"><table border=\"0\" align=\"center\" width=\"100%\">"));
     response_->print(F("<tr><td align=\"left\">RSSI:</td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr></table></fieldset>"));
-    
+
     response_->print(fp_.getHtmlFieldset("Running values"));
     response_->print(fp_.getHtmlTable());
     response_->print(fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue"));
@@ -412,10 +411,10 @@ void handleRoot(AsyncWebServerRequest* request) {
     response_->print(fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode"));
     response_->print(fp_.getHtmlTableEnd());
     response_->print(fp_.getHtmlFieldsetEnd());
-    response_->print(F("</div>"));
+    response_->print(fp_.getHtmlTabContentEnd());
 
-    // === TAB 2: Statistics - wird direkt gestreamt ===
-    response_->print(F("<div id=\"statistics\" class=\"tabcontent\">"));
+    // === Statistics Tab
+    response_->print(fp_.getHtmlTabContentStart("statistics"));
     response_->print(fp_.getHtmlFieldset("Statistics"));
     response_->print(fp_.getHtmlTable());
     response_->print(fp_.getHtmlTableRowSpan("Min voltage: ", "no data", "minBatVoltage"));
@@ -435,20 +434,20 @@ void handleRoot(AsyncWebServerRequest* request) {
     response_->print(F("<form method='POST' action='/resetstats'>"));
     response_->print(F("<button type='submit' style='margin-top:10px;'>Reset Statistics</button>"));
     response_->print(F("</form>"));
-    response_->print(F("</div>"));
+    response_->print(fp_.getHtmlTabContentEnd());
 
-    // === TAB 3: Shunt Configuration - wird direkt gestreamt ===
-    response_->print(F("<div id=\"shunt\" class=\"tabcontent\">"));
+    // === Shunt Tab
+    response_->print(fp_.getHtmlTabContentStart("shunt"));
     response_->print(fp_.getHtmlFieldset("Shunt configuration"));
     response_->print(fp_.getHtmlTable());
     response_->print(fp_.getHtmlTableRowSpan("Shunt resistance:", String(shuntConfig.ShuntResistance(), 5) + "&#8486;", "shuntResistance"));
     response_->print(fp_.getHtmlTableRowSpan("Shunt max current:", String(shuntConfig.MaxCurrent()) + "A", "maxCurrent"));
     response_->print(fp_.getHtmlTableEnd());
     response_->print(fp_.getHtmlFieldsetEnd());
-    response_->print(F("</div>"));
+    response_->print(fp_.getHtmlTabContentEnd());
 
-    // === TAB 4: Battery Configuration - wird direkt gestreamt ===
-    response_->print(F("<div id=\"battery\" class=\"tabcontent\">"));
+    // === Battery Tab
+    response_->print(fp_.getHtmlTabContentStart("battery"));
     response_->print(fp_.getHtmlFieldset("Battery configuration"));
     response_->print(fp_.getHtmlTable());
     response_->print(fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[batteryConfig.Type()]), "BatType"));
@@ -474,10 +473,10 @@ void handleRoot(AsyncWebServerRequest* request) {
     response_->print(F("</table>"));
     response_->print(F("</form>"));
     response_->print(fp_.getHtmlFieldsetEnd());
-    response_->print(F("</div>"));
+    response_->print(fp_.getHtmlTabContentEnd());
 
-    // === TAB 5: System - wird direkt gestreamt ===
-    response_->print(F("<div id=\"system\" class=\"tabcontent\">"));
+    // === System Tab
+    response_->print(fp_.getHtmlTabContentStart("system"));
     response_->print(fp_.getHtmlFieldset("System status"));
     response_->print(fp_.getHtmlTable());
     response_->print(fp_.getHtmlTableRowSpan("Number of reboots:", String(RebootManager::getRebootCount()), "rebootCount"));
@@ -491,23 +490,21 @@ void handleRoot(AsyncWebServerRequest* request) {
     response_->print(fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str()));
     response_->print(fp_.getHtmlTableEnd());
     response_->print(fp_.getHtmlFieldsetEnd());
-    response_->print(F("</div>"));
+    response_->print(fp_.getHtmlTabContentEnd());
 
-    // Footer wird direkt gestreamt
     response_->print(fp_.addNewLine(2));
     response_->print(fp_.getHtmlTable());
     response_->print(fp_.getHtmlTableRowText("<a href='config'>Configuration</a>"));
     response_->print(fp_.getHtmlTableRowText("<a href='webserial'>Sensor monitoring</a>"));
     response_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
     response_->print(fp_.getHtmlTableEnd());
-    
+
     response_->print(fp_.getBodyEnd());
     response_->print(fp_.getHtmlEnd());
 
     response_->addHeader("Server", "ESP Async Web Server");
     request->send(response_);
 }
-
 void handlePost(AsyncWebServerRequest* request) {
     if (request->hasParam("reset", true)) {
         Serial.println(F("Resetting to factory defaults..."));
