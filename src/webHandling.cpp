@@ -79,24 +79,7 @@ public:
 protected:
     String getFormEnd() override {
         String s_ = AsyncTabHtmlFormatProvider::getFormEnd();
-
-        // Add form end buttons from PROGMEM
-        char buffer_[1024];
-        strcpy_P(buffer_, html_form_end);
-        s_ += buffer_;
-
-        return s_;
-    }
-
-    String getScriptInner() override {
-        String s_ = AsyncTabHtmlFormatProvider::getScriptInner();
-        s_.replace("{millisecond}", "2000");
-
-        // Add updateData function from PROGMEM
-        char buffer_[2048];
-        strcpy_P(buffer_, html_update_data_function);
-        s_ += buffer_;
-
+        s_ += FPSTR(html_form_end);
         return s_;
     }
 };
