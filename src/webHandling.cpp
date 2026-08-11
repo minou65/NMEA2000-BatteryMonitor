@@ -377,7 +377,7 @@ void handleRoot(AsyncWebServerRequest* request) {
         return;
     }
 
-    AsyncResponseStream* response_ = request->beginResponseStream("text/html", 1024);
+    AsyncResponseStream* response_ = request->beginResponseStream("text/html");
     MyHtmlRootFormatProvider fp_;
 
     // === 5 Tabs erstellen ===
@@ -387,112 +387,7 @@ void handleRoot(AsyncWebServerRequest* request) {
     fp_.addTab("Battery", "battery");
     fp_.addTab("System", "system");
 
-    // === TAB 1: Current Values (RSSI + Running Values) ===
-    String currentTab_ = "";
-    currentTab_ += F("<fieldset align=left style=\"border: 1px solid\"><table border=\"0\" align=\"center\" width=\"100%\">");
-    currentTab_ += F("<tr><td align=\"left\">RSSI:</td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr></table></fieldset>");
-    
-    currentTab_ += fp_.getHtmlFieldset("Running values");
-    currentTab_ += fp_.getHtmlTable();
-    currentTab_ += fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue");
-    currentTab_ += fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue");
-    currentTab_ += fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue");
-    currentTab_ += fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue");
-    currentTab_ += fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue");
-    currentTab_ += fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue");
-    currentTab_ += fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue");
-    currentTab_ += fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode");
-    currentTab_ += fp_.getHtmlTableEnd();
-    currentTab_ += fp_.getHtmlFieldsetEnd();
-    fp_.addString(currentTab_, "current");
-
-    // === TAB 2: Statistics ===
-    String statsTab_ = "";
-    statsTab_ += fp_.getHtmlFieldset("Statistics");
-    statsTab_ += fp_.getHtmlTable();
-    statsTab_ += fp_.getHtmlTableRowSpan("Min voltage: ", "no data", "minBatVoltage");
-    statsTab_ += fp_.getHtmlTableRowSpan("Max voltage: ", "no data", "maxBatVoltage");
-    statsTab_ += fp_.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy");
-    statsTab_ += fp_.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy");
-    statsTab_ += fp_.getHtmlTableRowSpan("Total Ah drawn:", "no data", "sumApHDrawn");
-    statsTab_ += fp_.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge");
-    statsTab_ += fp_.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge");
-    statsTab_ += fp_.getHtmlTableRowSpan("Deepest temperature:", "no data", "deepestTemperatur");
-    statsTab_ += fp_.getHtmlTableRowSpan("Highest temperature:", "no data", "highestTemperatur");
-    statsTab_ += fp_.getHtmlTableRowSpan("Time since last full:", "no data", "TimeSinceLastFull");
-    statsTab_ += fp_.getHtmlTableRowSpan("Charge cycles:", "no data", "numChargeCycles");
-    statsTab_ += fp_.getHtmlTableRowSpan("Auto syncs:", "no data", "numAutoSyncs");
-    statsTab_ += fp_.getHtmlTableEnd();
-    statsTab_ += fp_.getHtmlFieldsetEnd();
-    
-    // Reset Button
-    statsTab_ += F("<form method='POST' action='/resetstats'>");
-    statsTab_ += F("<button type='submit' style='margin-top:10px;'>Reset Statistics</button>");
-    statsTab_ += F("</form>");
-    
-    fp_.addString(statsTab_, "statistics");
-
-    // === TAB 3: Shunt Configuration ===
-    String shuntTab_ = "";
-    shuntTab_ += fp_.getHtmlFieldset("Shunt configuration");
-    shuntTab_ += fp_.getHtmlTable();
-    shuntTab_ += fp_.getHtmlTableRowSpan("Shunt resistance:", String(shuntConfig.ShuntResistance(), 5) + "&#8486;", "shuntResistance");
-    shuntTab_ += fp_.getHtmlTableRowSpan("Shunt max current:", String(shuntConfig.MaxCurrent()) + "A", "maxCurrent");
-    shuntTab_ += fp_.getHtmlTableEnd();
-    shuntTab_ += fp_.getHtmlFieldsetEnd();
-    fp_.addString(shuntTab_, "shunt");
-
-    // === TAB 4: Battery Configuration ===
-    String batteryTab_ = "";
-    batteryTab_ += fp_.getHtmlFieldset("Battery configuration");
-    batteryTab_ += fp_.getHtmlTable();
-    batteryTab_ += fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[batteryConfig.Type()]), "BatType");
-    batteryTab_ += fp_.getHtmlTableRowSpan("Capacity:", String(batteryConfig.Capacity_Ah()) + "Ah", "battCapacity");
-    batteryTab_ += fp_.getHtmlTableRowSpan("Efficiency:", String(batteryConfig.ChargeEfficiency_Percent()) + "%", "chargeEfficiency");
-    batteryTab_ += fp_.getHtmlTableRowSpan("Min SOC:", String(batteryConfig.MinSoc_Percent()) + "%", "minSoc");
-    float mA_ = batteryFullConfig.TailCurrent_mA();
-    float mV_ = batteryFullConfig.FullVoltage_mV();
-    batteryTab_ += fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent");
-    batteryTab_ += fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage");
-    batteryTab_ += fp_.getHtmlTableRowSpan("Full delay:", String(batteryFullConfig.FullDelay_s()) + "s", "fullDelay");
-    batteryTab_ += fp_.getHtmlTableRowSpan("Manufacturer:", String(batteryConfig.Manufacturer()), "BattManufacturer");
-    batteryTab_ += fp_.getHtmlTableRowSpan("Replacment date:", String(batteryConfig.ReplacmentDate()), "BattDate");
-    batteryTab_ += fp_.getHtmlTableEnd();
-    batteryTab_ += fp_.getHtmlFieldsetEnd();
-
-    // Set SOC Form
-    batteryTab_ += fp_.getHtmlFieldset("Set state of charge");
-    batteryTab_ += F("<form method='POST' action='/setsoc'>");
-    batteryTab_ += F("<table border='0' style='width:100%'>");
-    batteryTab_ += F("<tr><td><label for='soc'>New battery SOC:</label></td></tr>");
-    batteryTab_ += F("<tr><td><input type='number' name='soc' id='soc' value='100' min='0' max='100' step='1' style='width:95%' /></td></tr>");
-    batteryTab_ += F("<tr><td><button type='submit' style='margin-top:10px;'>Set SOC</button></td></tr>");
-    batteryTab_ += F("</table>");
-    batteryTab_ += F("</form>");
-    batteryTab_ += fp_.getHtmlFieldsetEnd();
-
-    fp_.addString(batteryTab_, "battery");
-
-    // === TAB 5: System (Reboot Info + Network) ===
-    String systemTab_ = "";
-    
-    systemTab_ += fp_.getHtmlFieldset("System status");
-    systemTab_ += fp_.getHtmlTable();
-    systemTab_ += fp_.getHtmlTableRowSpan("Number of reboots:", String(RebootManager::getRebootCount()), "rebootCount");
-    systemTab_ += fp_.getHtmlTableRowSpan("Last reboot reason:", RebootManager::getLastRebootReasonText(), "rebootReason");
-    systemTab_ += fp_.getHtmlTableEnd();
-    systemTab_ += fp_.getHtmlFieldsetEnd();
-
-    systemTab_ += fp_.getHtmlFieldset("Network");
-    systemTab_ += fp_.getHtmlTable();
-    systemTab_ += fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress());
-    systemTab_ += fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str());
-    systemTab_ += fp_.getHtmlTableEnd();
-    systemTab_ += fp_.getHtmlFieldsetEnd();
-
-    fp_.addString(systemTab_, "system");
-
-    // === HTML Ausgabe ===
+    // Header wird sofort gesendet (gechunkt)
     response_->print(fp_.getHtmlHead(iotWebConf.getThingName()));
     response_->print(fp_.getIconLinks());
     response_->print(fp_.getHtmlStyle());
@@ -500,7 +395,105 @@ void handleRoot(AsyncWebServerRequest* request) {
     response_->print(fp_.getHtmlScript());
     response_->print(fp_.getHtmlTabs());
 
-    // Footer
+    // === TAB 1: Current Values - wird direkt gestreamt ===
+    response_->print(F("<div id=\"current\" class=\"tabcontent\">"));
+    response_->print(F("<fieldset align=left style=\"border: 1px solid\"><table border=\"0\" align=\"center\" width=\"100%\">"));
+    response_->print(F("<tr><td align=\"left\">RSSI:</td><td align=\"right\"><span id=\"RSSIValue\">no data</span></td></tr></table></fieldset>"));
+    
+    response_->print(fp_.getHtmlFieldset("Running values"));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowSpan("Voltage: ", "no data", "VoltageValue"));
+    response_->print(fp_.getHtmlTableRowSpan("Current: ", "no data", "CurrentValue"));
+    response_->print(fp_.getHtmlTableRowSpan("Avg current: ", "no data", "AverageCurrentValue"));
+    response_->print(fp_.getHtmlTableRowSpan("State of charge: ", "no data", "SocValue"));
+    response_->print(fp_.getHtmlTableRowSpan("Time to go: ", "no data", "tTgValue"));
+    response_->print(fp_.getHtmlTableRowSpan("Battery full: ", "no data", "isFullValue"));
+    response_->print(fp_.getHtmlTableRowSpan("Temperature: ", "no data", "TemperatureValue"));
+    response_->print(fp_.getHtmlTableRowSpan("Mode: ", "no data", "Mode"));
+    response_->print(fp_.getHtmlTableEnd());
+    response_->print(fp_.getHtmlFieldsetEnd());
+    response_->print(F("</div>"));
+
+    // === TAB 2: Statistics - wird direkt gestreamt ===
+    response_->print(F("<div id=\"statistics\" class=\"tabcontent\">"));
+    response_->print(fp_.getHtmlFieldset("Statistics"));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowSpan("Min voltage: ", "no data", "minBatVoltage"));
+    response_->print(fp_.getHtmlTableRowSpan("Max voltage: ", "no data", "maxBatVoltage"));
+    response_->print(fp_.getHtmlTableRowSpan("Charged energy:", "no data", "amountChargedEnergy"));
+    response_->print(fp_.getHtmlTableRowSpan("Discharged energy:", "no data", "amountDischargedEnergy"));
+    response_->print(fp_.getHtmlTableRowSpan("Total Ah drawn:", "no data", "sumApHDrawn"));
+    response_->print(fp_.getHtmlTableRowSpan("Last discharged energy:", "no data", "lastDischarge"));
+    response_->print(fp_.getHtmlTableRowSpan("Deepest discharged energy:", "no data", "deepestDischarge"));
+    response_->print(fp_.getHtmlTableRowSpan("Deepest temperature:", "no data", "deepestTemperatur"));
+    response_->print(fp_.getHtmlTableRowSpan("Highest temperature:", "no data", "highestTemperatur"));
+    response_->print(fp_.getHtmlTableRowSpan("Time since last full:", "no data", "TimeSinceLastFull"));
+    response_->print(fp_.getHtmlTableRowSpan("Charge cycles:", "no data", "numChargeCycles"));
+    response_->print(fp_.getHtmlTableRowSpan("Auto syncs:", "no data", "numAutoSyncs"));
+    response_->print(fp_.getHtmlTableEnd());
+    response_->print(fp_.getHtmlFieldsetEnd());
+    response_->print(F("<form method='POST' action='/resetstats'>"));
+    response_->print(F("<button type='submit' style='margin-top:10px;'>Reset Statistics</button>"));
+    response_->print(F("</form>"));
+    response_->print(F("</div>"));
+
+    // === TAB 3: Shunt Configuration - wird direkt gestreamt ===
+    response_->print(F("<div id=\"shunt\" class=\"tabcontent\">"));
+    response_->print(fp_.getHtmlFieldset("Shunt configuration"));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowSpan("Shunt resistance:", String(shuntConfig.ShuntResistance(), 5) + "&#8486;", "shuntResistance"));
+    response_->print(fp_.getHtmlTableRowSpan("Shunt max current:", String(shuntConfig.MaxCurrent()) + "A", "maxCurrent"));
+    response_->print(fp_.getHtmlTableEnd());
+    response_->print(fp_.getHtmlFieldsetEnd());
+    response_->print(F("</div>"));
+
+    // === TAB 4: Battery Configuration - wird direkt gestreamt ===
+    response_->print(F("<div id=\"battery\" class=\"tabcontent\">"));
+    response_->print(fp_.getHtmlFieldset("Battery configuration"));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowSpan("Type:", String(BatTypeNames[batteryConfig.Type()]), "BatType"));
+    response_->print(fp_.getHtmlTableRowSpan("Capacity:", String(batteryConfig.Capacity_Ah()) + "Ah", "battCapacity"));
+    response_->print(fp_.getHtmlTableRowSpan("Efficiency:", String(batteryConfig.ChargeEfficiency_Percent()) + "%", "chargeEfficiency"));
+    response_->print(fp_.getHtmlTableRowSpan("Min SOC:", String(batteryConfig.MinSoc_Percent()) + "%", "minSoc"));
+    float mA_ = batteryFullConfig.TailCurrent_mA();
+    float mV_ = batteryFullConfig.FullVoltage_mV();
+    response_->print(fp_.getHtmlTableRowSpan("Tail current:", String((mA_ / 1000), 3) + "A", "tailCurrent"));
+    response_->print(fp_.getHtmlTableRowSpan("Full voltage:", String((mV_ / 1000), 2) + "V", "fullVoltage"));
+    response_->print(fp_.getHtmlTableRowSpan("Full delay:", String(batteryFullConfig.FullDelay_s()) + "s", "fullDelay"));
+    response_->print(fp_.getHtmlTableRowSpan("Manufacturer:", String(batteryConfig.Manufacturer()), "BattManufacturer"));
+    response_->print(fp_.getHtmlTableRowSpan("Replacment date:", String(batteryConfig.ReplacmentDate()), "BattDate"));
+    response_->print(fp_.getHtmlTableEnd());
+    response_->print(fp_.getHtmlFieldsetEnd());
+
+    response_->print(fp_.getHtmlFieldset("Set state of charge"));
+    response_->print(F("<form method='POST' action='/setsoc'>"));
+    response_->print(F("<table border='0' style='width:100%'>"));
+    response_->print(F("<tr><td><label for='soc'>New battery SOC:</label></td></tr>"));
+    response_->print(F("<tr><td><input type='number' name='soc' id='soc' value='100' min='0' max='100' step='1' style='width:95%' /></td></tr>"));
+    response_->print(F("<tr><td><button type='submit' style='margin-top:10px;'>Set SOC</button></td></tr>"));
+    response_->print(F("</table>"));
+    response_->print(F("</form>"));
+    response_->print(fp_.getHtmlFieldsetEnd());
+    response_->print(F("</div>"));
+
+    // === TAB 5: System - wird direkt gestreamt ===
+    response_->print(F("<div id=\"system\" class=\"tabcontent\">"));
+    response_->print(fp_.getHtmlFieldset("System status"));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowSpan("Number of reboots:", String(RebootManager::getRebootCount()), "rebootCount"));
+    response_->print(fp_.getHtmlTableRowSpan("Last reboot reason:", RebootManager::getLastRebootReasonText(), "rebootReason"));
+    response_->print(fp_.getHtmlTableEnd());
+    response_->print(fp_.getHtmlFieldsetEnd());
+
+    response_->print(fp_.getHtmlFieldset("Network"));
+    response_->print(fp_.getHtmlTable());
+    response_->print(fp_.getHtmlTableRowText("MAC Address:", WiFi.macAddress()));
+    response_->print(fp_.getHtmlTableRowText("IP Address:", WiFi.localIP().toString().c_str()));
+    response_->print(fp_.getHtmlTableEnd());
+    response_->print(fp_.getHtmlFieldsetEnd());
+    response_->print(F("</div>"));
+
+    // Footer wird direkt gestreamt
     response_->print(fp_.addNewLine(2));
     response_->print(fp_.getHtmlTable());
     response_->print(fp_.getHtmlTableRowText("<a href='config'>Configuration</a>"));
