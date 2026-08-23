@@ -38,7 +38,7 @@
     // ----------------------------------------------------
     #define ESP32_CAN_TX_PIN GPIO_NUM_16    // CAN Bus TX Pin
     #define ESP32_CAN_RX_PIN GPIO_NUM_17    // CAN Bus RX Pin
-    #define ONE_WIRE_BUS     GPIO_NUM_36    // DS18B20 OneWire Data Pin
+    #define ONE_WIRE_BUS     GPIO_NUM_26    // DS18B20 OneWire Data Pin
     #define INA226_ALERT_PIN GPIO_NUM_19    // INA226 Alert Pin
     #define INA226_SCL_PIN   GPIO_NUM_22    // INA226 SCL Pin
     #define INA226_SDA_PIN   GPIO_NUM_21    // INA226 SDA Pin
