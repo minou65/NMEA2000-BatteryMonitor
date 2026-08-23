@@ -16,6 +16,10 @@
 #include <N2kTypes.h>
 
 extern bool debugMode;
+extern bool debugAhCounter;
+extern bool debugSOC;
+extern bool debugTTG;
+extern bool debugConsumption;
 
 #define DEBUG_PRINT(x) if (debugMode) Serial.print(x) 
 #define DEBUG_PRINTLN(x) if (debugMode) Serial.println(x)
