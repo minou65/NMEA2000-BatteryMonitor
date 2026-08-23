@@ -10,7 +10,6 @@
 #endif
 
 #include <IotWebConfAsyncTab.h>
-#include <WebSerial.h>
 #include "common.h"
 
 // -- Initial password to connect to the Thing, when it creates an own Access Point.

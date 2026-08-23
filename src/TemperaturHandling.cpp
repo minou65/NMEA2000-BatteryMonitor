@@ -24,6 +24,7 @@ volatile float Temperatur = 0.0f;
 
 void TemperaturInit() {
     sensors.begin(); // Start up the library
+	sensors.setResolution(10); // Set the resolution to 10 bit (can be 9, 10, 11, or 12)
     sensorTimer.start();
 }
 

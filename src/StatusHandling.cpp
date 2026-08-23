@@ -5,11 +5,15 @@
 #include <Preferences.h>
 #endif
 
-#include <WebSerial.h>
 #include "BatteryConfig.h"
+#include <EventLogger.h>
 
 const double MAX_FLOAT = 3.4E+38; // nax value for float
 const double MIN_FLOAT = -3.4E+38; // min value forfloat
+
+bool debugSOC = false;
+bool debugTTG = false;
+bool debugConsumption = false;
 
 BatteryStatus batteryStatus;
 
@@ -23,53 +27,54 @@ BatteryStatus::BatteryStatus() {
 }
 
 void BatteryStatus::begin() {
-	lastCurrent = 0;
-	fullReachedAt = 0;
-	glidingAverageCurrent = 0;
-	lasStatUpdate = 0;
-	lastTemperature = 0;
-	isSynced = false;
+    lastCurrent = 0;
+    fullReachedAt = 0;
+    glidingAverageCurrent = 0;
+    lasStatUpdate = 0;
+    lastTemperature = 0;
+    isSynced = false;
 
-	stats.init();
+    stats.init();
 
     if (!readStats()) {
-		Serial.println("BatteryStatus::begin: No valid data found. Resetting stats...");
-		stats.init();
-	} else if (stats.magic != MAGICKEY) {
-		Serial.println("BatteryStatus::begin: Invalid data found. Resetting stats...");
-		Serial.printf("    stats.magic: %d\n", stats.magic);
-		Serial.printf("    MAGICKEY: %d\n", MAGICKEY);
-		stats.init();
-	}
+        eventLogger.log(F("BatteryStatus::begin: No valid data found. Resetting stats..."));
+        stats.init();
+    }
+    else if (stats.magic != MAGICKEY) {
+        eventLogger.log(F("BatteryStatus::begin: Invalid data found. Resetting stats..."));
+        eventLogger.logf("    stats.magic: %d", stats.magic);
+        eventLogger.logf("    MAGICKEY: %d", MAGICKEY);
+        stats.init();
+    }
 }
 
-void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiencyPercent, uint16_t minPercent, uint16_t tailCurrentmA, uint16_t fullVoltagemV,uint16_t fullDelayS) {
+void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiencyPercent, uint16_t minPercent, uint16_t tailCurrentmA, uint16_t fullVoltagemV, uint16_t fullDelayS) {
 
-        batteryCapacity = ((float)capacityAh) * 3600.0f; // We use it in As
-        chargeEfficiency = ((float)chargeEfficiencyPercent) / 100.0f;
-        tailCurrent = tailCurrentmA / 1000.0f;
-        fullVoltage = fullVoltagemV / 1000.0f;
-        minAs = minPercent * batteryCapacity / 100.0f;
-        fullDelay = ((unsigned long)fullDelayS) *1000; 
+    batteryCapacity = ((float)capacityAh) * 3600.0f; // We use it in As
+    chargeEfficiency = ((float)chargeEfficiencyPercent) / 100.0f;
+    tailCurrent = tailCurrentmA / 1000.0f;
+    fullVoltage = fullVoltagemV / 1000.0f;
+    minAs = minPercent * batteryCapacity / 100.0f;
+    fullDelay = ((unsigned long)fullDelayS) * 1000;
 
-        if (shuntConfig.CurrentCalibrationFactor() < 0) {
-            tailCurrent = tailCurrent * -1;
-        }
+    if (shuntConfig.CurrentCalibrationFactor() < 0) {
+        tailCurrent = tailCurrent * -1;
+    }
 
-
-
-        Serial.println("BatteryStatus::setParameters");
-        Serial.printf("    capacityAh: %d\n", capacityAh);
-        Serial.printf("    capacityAs: %.3f\n", batteryCapacity);
-        Serial.printf("    chargeEfficiency: %.3f\n", chargeEfficiency);
-        Serial.printf("    tailCurrent: %.3f\n", tailCurrent);
-        Serial.printf("    fullVoltage: %.3f\n", fullVoltage);
-        Serial.printf("    minAs: %.3f\n", minAs);
-        Serial.printf("    fullDelay: %ld\n", fullDelay);
+    eventLogger.log(F("BatteryStatus::setParameters"));
+    eventLogger.logf("    capacityAh: %d", capacityAh);
+    eventLogger.logf("    capacityAs: %.3f", batteryCapacity);
+    eventLogger.logf("    chargeEfficiency: %.3f", chargeEfficiency);
+    eventLogger.logf("    tailCurrent: %.3f", tailCurrent);
+    eventLogger.logf("    fullVoltage: %.3f", fullVoltage);
+    eventLogger.logf("    minAs: %.3f", minAs);
+    eventLogger.logf("    fullDelay: %ld", fullDelay);
 
 }
 
 void BatteryStatus::updateSOC() {
+
+	float lastSoc = stats.socVal;
     if (shuntConfig.CurrentCalibrationFactor() != 0) {
         stats.socVal = stats.remainAs / batteryCapacity;;
     }
@@ -100,23 +105,27 @@ void BatteryStatus::updateSOC() {
         }
     }
 
-    //Serial.println("BatteryStatus::updateSOC");
-    //Serial.printf("    socVal: %.3f\n", stats.socVal);
-    //Serial.printf("    lastSoc: %.3f\n", lastSoc);
-    //Serial.printf("    remainAs: %.3f\n", stats.remainAs);
-    //Serial.printf("    batteryCapacity: %.3f\n", batteryCapacity);
-    //Serial.printf("    fabs: %.3f\n", fabs(lastSoc - stats.socVal));
+    if (debugSOC) {
+        eventLogger.log(F("BatteryStatus::updateSOC"));
+        eventLogger.logf("    socVal: %.3f", stats.socVal);
+        eventLogger.logf("    lastSoc: %.3f", lastSoc);
+        eventLogger.logf("    remainAs: %.3f", stats.remainAs);
+        eventLogger.logf("    batteryCapacity: %.3f", batteryCapacity);
+        eventLogger.logf("    fabs: %.3f", fabs(lastSoc - stats.socVal));
+    }
    
 }
 
 void BatteryStatus::updateTtG() {
     float _avgCurrent = getAverageConsumption() * -1;
 
-    //Serial.println("BatteryStatus::updateTtG");
-    //Serial.printf("    avgCurrent : %.3f\n", _avgCurrent);
-    //Serial.printf("    TtgVal: %d\n", stats.tTgVal);
-    //Serial.printf("    remainAs: %.3f\n", stats.remainAs);
-    //Serial.printf("    minAs: %.3f\n", minAs);
+    if (debugTTG) {
+        eventLogger.log(F("BatteryStatus::updateTtG"));
+        eventLogger.logf("    avgCurrent : %.3f", _avgCurrent);
+        eventLogger.logf("    TtgVal: %d", stats.tTgVal);
+        eventLogger.logf("    remainAs: %.3f", stats.remainAs);
+        eventLogger.logf("    minAs: %.3f", minAs);
+    }
 
     if (_avgCurrent > 0.0) {
         unsigned int _tTgVal = static_cast<int>(max(stats.remainAs - minAs, 0.0f) / _avgCurrent);
@@ -205,18 +214,20 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
 
     lastCurrent = current;
 
-    //Serial.println("BatteryStatus::updateConsumption");
-    //Serial.printf("    current: %.3f\n", current);
-    //Serial.printf("    Voltage: %.3f\n", lastVoltage);
-    //Serial.printf("    period: %.3f\n", period);
-    //Serial.printf("    numPeriods: %d\n", numPeriods);
-    //Serial.printf("    periodConsumption: %.3f\n", _periodConsumption);
-    //Serial.printf("    consumption: %.3f\n", _consumption);
-    //Serial.printf("    amountChargedEnergy: %.3f kWh\n", stats.amountChargedEnergy);
-    //Serial.printf("    amountDischargedEnergy: %.3f kWh\n", stats.amountDischargedEnergy);
-    //Serial.printf("    sumApHDrawn: %.3f Ah\n", stats.sumApHDrawn);
-    //Serial.printf("    remainAs: %.3f\n", stats.remainAs);
-    //Serial.printf("    consumedAs: %.3f\n", stats.consumedAs);
+    if (debugConsumption) {
+        eventLogger.log(F("BatteryStatus::updateConsumption"));
+        eventLogger.logf("    current: %.3f", current);
+        eventLogger.logf("    Voltage: %.3f", lastVoltage);
+        eventLogger.logf("    period: %.3f", period);
+        eventLogger.logf("    numPeriods: %d", numPeriods);
+        eventLogger.logf("    periodConsumption: %.3f", _periodConsumption);
+        eventLogger.logf("    consumption: %.3f", _consumption);
+        eventLogger.logf("    amountChargedEnergy: %.3f kWh", stats.amountChargedEnergy);
+        eventLogger.logf("    amountDischargedEnergy: %.3f kWh", stats.amountDischargedEnergy);
+        eventLogger.logf("    sumApHDrawn: %.3f Ah", stats.sumApHDrawn);
+        eventLogger.logf("    remainAs: %.3f", stats.remainAs);
+        eventLogger.logf("    consumedAs: %.3f", stats.consumedAs);
+    }
 
 }
 
@@ -430,7 +441,7 @@ bool BatteryStatus::readStatsFromRTC() {
     }
 
     if (!ESP.rtcUserMemoryRead(0, (uint32_t*)&stats.magic, sizeof(stats))) {
-        Serial.println("RTC read failed!");
+        eventLogger.log(F("RTC read failed!"));
         return false;
     }
 

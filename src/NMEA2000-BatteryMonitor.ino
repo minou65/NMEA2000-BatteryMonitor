@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <esp_task_wdt.h>
 #include <RebootManager.h>
+#include <EventLogger.h>
 
 #include "common.h"
 #include "StatusHandling.h"
@@ -25,36 +26,36 @@ void setup() {
         delay(1);
     }
 
-    Serial.println("\n========================================");
-    Serial.println("NMEA2000 battery monitor");
-    Serial.println("========================================");
-    Serial.printf("Firmware version: %s\n", Version);
-    Serial.println("Sensor type: INA226 and DS1820 sensor");
-    Serial.printf("INA226 Alert pin:  GPIO_%d\n", INA226_ALERT_PIN);
-    Serial.printf("INA226 SCL pin:    GPIO_%d\n", INA226_SCL_PIN);
-    Serial.printf("INA226 SDA pin:    GPIO_%d\n", INA226_SDA_PIN);
-    Serial.printf("DS1820 Sensor pin: GPIO_%d\n", ONE_WIRE_BUS);
-    Serial.println("========================================\n");
+    eventLogger.log(F("========================================"));
+    eventLogger.log(F("NMEA2000 battery monitor"));
+    eventLogger.log(F("========================================"));
+    eventLogger.logf("Firmware version: %s", Version);
+    eventLogger.log(F("Sensor type: INA226 and DS1820 sensor"));
+    eventLogger.logf("INA226 Alert pin:  GPIO_%d", INA226_ALERT_PIN);
+    eventLogger.logf("INA226 SCL pin:    GPIO_%d", INA226_SCL_PIN);
+    eventLogger.logf("INA226 SDA pin:    GPIO_%d", INA226_SDA_PIN);
+    eventLogger.logf("DS1820 Sensor pin: GPIO_%d", ONE_WIRE_BUS);
+    eventLogger.log(F("========================================"));
 
 #ifdef DISABLE_BROWNOUT_DETECTOR
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
-    Serial.println("Brownout detector disabled via build flag");
+    eventLogger.log(F("Brownout detector disabled via build flag"));
 #endif
 
     RebootManager::begin();
-	Serial.printf("Reboot count: %d\n", RebootManager::getRebootCount());
-	Serial.printf("Last reboot reason: %s\n", RebootManager::getLastRebootReasonText().c_str());
+    eventLogger.logf("Reboot count: %d", RebootManager::getRebootCount());
+    eventLogger.logf("Last reboot reason: %s", RebootManager::getLastRebootReasonText().c_str());
 
-    Serial.println("\nInitializing WiFi...");
+    eventLogger.log(F("Initializing WiFi..."));
     wifiSetup();
 
-    Serial.println("\nInitializing sensor...");
+    eventLogger.log(F("Initializing sensor..."));
     sensorInit();
     TemperaturInit();
 
-    Serial.println("\nSetting up NMEA2000...");
+    eventLogger.log(F("Setting up NMEA2000..."));
     N2kInit();
 
     xTaskCreatePinnedToCore(
@@ -69,11 +70,11 @@ void setup() {
 
     esp_task_wdt_add(NULL);
 
-    Serial.println("\n========================================");
-    Serial.println("NMEA2000 started");
-    Serial.println("Listening for GPS time on NMEA2000 bus");
-    Serial.println("Setup complete");
-    Serial.println("========================================\n");
+    eventLogger.log(F("========================================"));
+    eventLogger.log(F("NMEA2000 started"));
+    eventLogger.log(F("Listening for GPS time on NMEA2000 bus"));
+    eventLogger.log(F("Setup complete"));
+    eventLogger.log(F("========================================"));
 }
 
 void loop() {

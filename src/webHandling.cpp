@@ -26,6 +26,11 @@
 #include <IotWebRootTab.h>
 #include <RebootManager.h>
 
+#include <EventLogger.h>
+// WebSerial High Performance Mode - sendet Nachrichten sofort
+#define WSL_HIGH_PERF
+#include <WebSerial.h>
+
 #include <N2kTypes.h>
 
 // -- Method declarations.
@@ -36,7 +41,9 @@ void onProgress(size_t prg, size_t sz);
 void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
 void handlePost(AsyncWebServerRequest* request);
+void handleWebSerialCommand(uint8_t* data, size_t len);
 void handleReboot(AsyncWebServerRequest* request);
+void handleConfigSavedPage(iotwebconf::WebRequestWrapper* webRequestWrapper);
 void convertParams();
 void connectWifi(const char* ssid, const char* password);
 iotwebconf::WifiAuthInfo* handleConnectWifiFailure();
@@ -55,6 +62,11 @@ bool SaveParams = false;
 bool startAPMode = true;
 uint8_t APModeOfflineTime = 0;
 bool ShouldReboot = false;
+
+// WebSerial state tracking
+static int previousConnectionCount = 0;
+static unsigned long lastConnectionChange = 0;
+static bool waitingToSendHistory = false;
 
 char CustomName[64] = "NMEA-Batterymonitor";
 
@@ -94,9 +106,7 @@ void wifiConnected(){
 }
 
 void wifiSetup() {
-    Serial.begin(115200);
-    Serial.println();
-    Serial.println("starting up...");
+
 
      
     iotWebConf.setStatusPin(STATUS_PIN,ON_LEVEL);
@@ -132,6 +142,7 @@ void wifiSetup() {
   
     iotWebConf.setConfigSavedCallback(&configSaved);
     iotWebConf.setWifiConnectionCallback(&wifiConnected);
+    iotWebConf.setConfigSavedPage(&handleConfigSavedPage);
 
     iotWebConf.getApTimeoutParameter()->visible = true;
 
@@ -175,46 +186,90 @@ void wifiSetup() {
         }
     );
 
+    // WebSerial Initialisierung
     WebSerial.begin(&server, "/webserial");
+
+    // Handler für eingehende Nachrichten
+    WebSerial.onMessage(handleWebSerialCommand);
+
+    // Callback für Live-Updates registrieren
+    eventLogger.setLiveCallback([](const EventLogger::Event& event_) {
+        WebSerial.println(eventLogger.formatEvent(event_));
+        }
+    );
 
     if (APModeOfflineTime > 0) {
         APModeTimer.start(APModeOfflineTime * 60 * 1000);
     }
 
-    Serial.println("Ready.");
+    eventLogger.log(F("Web server successfully initialized"));
 }
 
 void wifiLoop() {
-      // -- doLoop should be called as frequently as possible.
-      iotWebConf.doLoop();
-      ArduinoOTA.handle();
+    // -- doLoop should be called as frequently as possible.
+	WebSerial.loop();
+    iotWebConf.doLoop();
+    ArduinoOTA.handle();
+
+    // Connection Count prüfen
+    int currentConnectionCount = WebSerial.getConnectionCount();
+
+    // Verbindungsänderung erkannt
+    if (currentConnectionCount != previousConnectionCount) {
+        if (currentConnectionCount > 0) {
+            // Neue Verbindung
+            waitingToSendHistory = true;
+            lastConnectionChange = millis();
+        }
+        previousConnectionCount = currentConnectionCount;
+    }
+
+
+    // Nach 500ms Historie senden
+    if (waitingToSendHistory && currentConnectionCount > 0 && (millis() - lastConnectionChange) >= 500) {
+        waitingToSendHistory = false;
+
+        WebSerial.println();
+        WebSerial.println("=== WebSerial ===");
+        WebSerial.println("Type 'help' for available commands");
+        WebSerial.println();
+
+        auto events_ = eventLogger.getEvents();
+        if (!events_.empty()) {
+            WebSerial.println("=== Event History (" + String(events_.size()) + " events) ===");
+            for (const auto& event_ : events_) {
+                WebSerial.println(eventLogger.formatEvent(event_));
+            }
+            WebSerial.println();
+        }
+        WebSerial.println("=== Live Events ===");
+        WebSerial.println();
+    }
 
     if (SaveParams) {
-        Serial.println(F("Parameters are changed,save them"));
+        eventLogger.log(F("Parameters are changed,save them"));
 
         iotWebConf.saveConfig();
         SaveParams = false;
     }
 
     if ((iotWebConf.getState() == iotwebconf::OnLine) && (APModeParam.isChecked()) && startAPMode) {
-	    Serial.println(F("start AP mode only at boot sequence"));
-	    startAPMode = false;
+        eventLogger.log(F("start AP mode only at boot sequence"));
+        startAPMode = false;
     }
 
     if (APModeTimer.done()) {
-		Serial.println(F("AP mode offline time reached"));
-		iotWebConf.goOffLine();
-		APModeTimer.stop();
-	}
+        eventLogger.log(F("AP mode offline time reached"));
+        iotWebConf.goOffLine();
+        APModeTimer.stop();
+    }
 
-	if (ShouldReboot || AsyncUpdater.isFinished()) {
-		Serial.println(F("Rebooting..."));
+    if (ShouldReboot || AsyncUpdater.isFinished()) {
+        eventLogger.log(F("Rebooting..."));
         batteryStatus.writeStats();
-		delay(1000);
-		ESP.restart();
-	}
-    
-
+        delay(1000);
+        ESP.restart();
+    }
 }
 
 void onProgress(size_t prg, size_t sz) {
@@ -222,8 +277,7 @@ void onProgress(size_t prg, size_t sz) {
     size_t currentPercent = (prg * 100) / sz;
 
     if (currentPercent % 5 == 0 && currentPercent != lastPrinted) {
-        Serial.printf("Progress: %d%%\n", currentPercent);
-        WebSerial.printf("Progress: %d%%\n", currentPercent);
+        eventLogger.logf("Progress: %d%%", currentPercent);
         lastPrinted = currentPercent;
     }
 }
@@ -288,7 +342,7 @@ void handleData(AsyncWebServerRequest* request) {
 	}
     json_ += "\"mode\":\"" + String(batteryStatus.current() >= 0 ? "charging" : "discharging") + "\",";
     json_ += "\"isFull\":\"" + String(batteryStatus.isFull() ? "true" : "false") + "\",";
-	json_ += "\"temperature\":" + String(batteryStatus.temperatur(), 2) + ",";
+	json_ += "\"temperature\":" + String(batteryStatus.temperatur(), 1) + ",";
 	json_ += "\"batteryType\":\"" + String(BatTypeNames[batteryConfig.Type()]) + "\",";
 	json_ += "\"batteryVoltage\":\"" + String(BatNomVoltNames[batteryConfig.NomVolt()]) + "\",";
 	json_ += "\"batteryChemistry\":\"" + String(BatChemNames[batteryConfig.Chemistry()]) + "\",";
@@ -360,7 +414,7 @@ void handleRoot(AsyncWebServerRequest* request) {
         return;
     }
 
-    AsyncResponseStream* response_ = request->beginResponseStream("text/html");
+    AsyncResponseStream* response_ = request->beginResponseStream("text/html", 8192);
     MyHtmlRootFormatProvider fp_;
 
     // === 5 Tabs erstellen ===
@@ -501,8 +555,10 @@ void handleRoot(AsyncWebServerRequest* request) {
     response_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
     response_->print(fp_.getHtmlTableEnd());
 
+    Serial.println("About to send footer...");
     response_->print(fp_.getBodyEnd());
     response_->print(fp_.getHtmlEnd());
+    Serial.println("Footer sent!");
 
     response_->addHeader("Server", "ESP Async Web Server");
     request->send(response_);
@@ -528,6 +584,119 @@ void handlePost(AsyncWebServerRequest* request) {
     }
 }
 
+void handleWebSerialCommand(uint8_t* data, size_t len) {
+
+    // Kommando in String umwandeln
+    String command_ = "";
+    for (size_t i_ = 0; i_ < len; i_++) {
+        command_ += (char)data[i_];
+    }
+    command_.trim();
+
+    // Leere Kommandos ignorieren
+    if (command_.length() == 0) {
+        return;
+    }
+
+    eventLogger.logf("WebSerial: %s", command_.c_str());
+
+    // Kommandos verarbeiten
+    if (command_ == "help") {
+        WebSerial.println("=== Available Commands ===");
+        WebSerial.println("  help         - Show this help");
+        WebSerial.println("  reboot       - Reboot the device");
+        WebSerial.println("  clear        - Clear event buffer");
+        WebSerial.println("  status       - Show system status");
+        WebSerial.println("  history      - Show all buffered events");
+        WebSerial.println("  verbose      - Toggle all verbose logging (On/Off)");
+        WebSerial.println("  verbose=Ah   - Toggle Ah counter logging");
+        WebSerial.println("  verbose=SOC  - Toggle SOC logging");
+        WebSerial.println("  verbose=TTG  - Toggle TTG logging");
+        WebSerial.println("  verbose=Cons - Toggle consumption logging");
+    }
+    else if (command_ == "reboot") {
+        WebSerial.println(">>> Rebooting device...");
+        eventLogger.log("Reboot requested via WebSerial");
+        delay(100);
+        ShouldReboot = true;
+    }
+    else if (command_ == "clear") {
+        eventLogger.clear();
+        WebSerial.println(">>> Event buffer cleared");
+    }
+    else if (command_ == "status") {
+        WebSerial.println("=== System Status ===");
+        WebSerial.println("Version: " + String(Version));
+        WebSerial.println("WiFi SSID: " + String(WiFi.SSID()));
+        WebSerial.println("WiFi RSSI: " + String(WiFi.RSSI()) + " dBm");
+        WebSerial.println("IP Address: " + WiFi.localIP().toString());
+
+        unsigned long uptime_ = millis() / 1000;
+        unsigned long days_ = uptime_ / 86400;
+        unsigned long hours_ = (uptime_ % 86400) / 3600;
+        unsigned long minutes_ = (uptime_ % 3600) / 60;
+        unsigned long seconds_ = uptime_ % 60;
+
+        WebSerial.printf("Uptime: %lud %02lu:%02lu:%02lu", days_, hours_, minutes_, seconds_);
+        WebSerial.println("Free Heap: " + String(ESP.getFreeHeap()) + " bytes");
+        WebSerial.println("Events in buffer: " + String(eventLogger.count()) + "/" + String(EVENT_BUFFER_SIZE));
+        WebSerial.println();
+        WebSerial.println("=== Debug Flags ===");
+        WebSerial.println("Debug Mode:      " + String(debugMode ? "ON" : "OFF"));
+        WebSerial.println("Ah Counter:      " + String(debugAhCounter ? "ON" : "OFF"));
+        WebSerial.println("SOC:             " + String(debugSOC ? "ON" : "OFF"));
+        WebSerial.println("TTG:             " + String(debugTTG ? "ON" : "OFF"));
+        WebSerial.println("Consumption:     " + String(debugConsumption ? "ON" : "OFF"));
+    }
+    else if (command_ == "history") {
+        auto events_ = eventLogger.getEvents();
+        WebSerial.println("=== Event History (" + String(events_.size()) + " events) ===");
+        if (events_.empty()) {
+            WebSerial.println("(No events in buffer)");
+        }
+        else {
+            for (const auto& event_ : events_) {
+                WebSerial.println(eventLogger.formatEvent(event_));
+            }
+        }
+    }
+    else if (command_ == "verbose") {
+        debugMode = !debugMode;
+        WebSerial.println(">>> Verbose logging is now " + String(debugMode ? "enabled" : "disabled"));
+    }
+    else if (command_.startsWith("verbose=")) {
+        String param_ = command_.substring(8);
+        param_.toUpperCase();
+
+        if (param_ == "AH") {
+            debugAhCounter = !debugAhCounter;
+            WebSerial.println(">>> Ah counter logging is now " + String(debugAhCounter ? "enabled" : "disabled"));
+        }
+        else if (param_ == "SOC") {
+            debugSOC = !debugSOC;
+            WebSerial.println(">>> SOC logging is now " + String(debugSOC ? "enabled" : "disabled"));
+        }
+        else if (param_ == "TTG") {
+            debugTTG = !debugTTG;
+            WebSerial.println(">>> TTG logging is now " + String(debugTTG ? "enabled" : "disabled"));
+        }
+        else if (param_ == "CONS") {
+            debugConsumption = !debugConsumption;
+            WebSerial.println(">>> Consumption logging is now " + String(debugConsumption ? "enabled" : "disabled"));
+        }
+        else {
+            WebSerial.println(">>> Unknown verbose parameter: " + param_);
+            WebSerial.println(">>> Valid parameters: Ah, SOC, TTG, Cons");
+        }
+    }
+    else {
+        WebSerial.println(">>> Unknown command: " + command_);
+        WebSerial.println(">>> Type 'help' for available commands");
+    }
+
+    WebSerial.flush();
+}
+
 void handleReboot(AsyncWebServerRequest* request) {
     AsyncWebServerResponse* response_ = request->beginResponse(200, "text/html",
         "<html>"
@@ -543,6 +712,11 @@ void handleReboot(AsyncWebServerRequest* request) {
     request->client()->setNoDelay(true); // Disable Nagle's algorithm so the client gets the response immediately
     request->send(response_);
     ShouldReboot = true;
+}
+
+void handleConfigSavedPage(iotwebconf::WebRequestWrapper* webRequestWrapper) {
+    webRequestWrapper->sendHeader("Location", "/");
+    webRequestWrapper->send(302, "text/plain", "");
 }
 
 void convertParams() {
