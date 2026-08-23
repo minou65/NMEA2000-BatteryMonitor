@@ -25,39 +25,48 @@ public:
         snprintf(_maxCurrentID, STRING_LEN, "%s-maxcurrent", this->getId());
         snprintf(_VoltageCalibrationFactorID, STRING_LEN, "%s-voltagecalibrationfactor", this->getId());
         snprintf(_CurrentCalibrationFactorID, STRING_LEN, "%s-currentcalibrationfactor", this->getId());
-        snprintf(_shuntResistanceID, STRING_LEN, "%s-shuntresistance", this->getId());
+        snprintf(_shuntVoltageDropID, STRING_LEN, "%s-shuntvoltagedrop", this->getId());
 
-        this->addItem(&_shuntResistance);
+        this->addItem(&_shuntVoltageDrop);
         this->addItem(&_maxCurrent);
         this->addItem(&_VoltageCalibrationFactor);
         this->addItem(&_CurrentCalibrationFactor);
 
     }
 
-    float ShuntResistance() { return atof(_shuntResistanceValue); };
+    // Berechnet Widerstand aus Spannungsabfall und MaxCurrent
+    // R = (U_mV / 1000) / I_A
+    float ShuntResistance() {
+        float voltageDrop_mV = atof(_shuntVoltageDropValue);
+        float maxCurrent_A = atof(_maxCurrentValue);
+        if (maxCurrent_A == 0) return 0.0f;
+        return (voltageDrop_mV / 1000.0f) / maxCurrent_A;
+    };
+
+    float VoltageDropmV() { return atof(_shuntVoltageDropValue); };
     float MaxCurrent() { return atof(_maxCurrentValue); };
     float VoltageCalibrationFactor() { return atof(_VoltageCalibrationFactorValue); };
     float CurrentCalibrationFactor() { return atof(_CurrentCalibrationFactorValue); };
 
     void applyDefaultValues() {
-        _shuntResistance.applyDefaultValue();
+        _shuntVoltageDrop.applyDefaultValue();
         _maxCurrent.applyDefaultValue();
         _VoltageCalibrationFactor.applyDefaultValue();
         _CurrentCalibrationFactor.applyDefaultValue();
-	}
+    }
 
 private:
+    char _shuntVoltageDropValue[NUMBER_LEN];
     char _maxCurrentValue[NUMBER_LEN];
     char _VoltageCalibrationFactorValue[NUMBER_LEN];
     char _CurrentCalibrationFactorValue[NUMBER_LEN];
-    char _shuntResistanceValue[NUMBER_LEN];
 
+    char _shuntVoltageDropID[STRING_LEN];
     char _maxCurrentID[STRING_LEN];
     char _VoltageCalibrationFactorID[STRING_LEN];
     char _CurrentCalibrationFactorID[STRING_LEN];
-    char _shuntResistanceID[STRING_LEN];
 
-    iotwebconf::NumberParameter _shuntResistance = iotwebconf::NumberParameter("Shunt resistance [&#8486;]", _shuntResistanceID, _shuntResistanceValue, NUMBER_LEN, "0.00075", "0..100", "min='0.00001' max='100' step='0.00001'");
+    iotwebconf::NumberParameter _shuntVoltageDrop = iotwebconf::NumberParameter("Shunt voltage drop [mV]", _shuntVoltageDropID, _shuntVoltageDropValue, NUMBER_LEN, "75", "1..500", "min='1' max='500' step='0.1'");
     iotwebconf::NumberParameter _maxCurrent = iotwebconf::NumberParameter("Expected max current [A]", _maxCurrentID, _maxCurrentValue, NUMBER_LEN, "100", "1..500", "min='1' max='500' step='1'");
     iotwebconf::NumberParameter _VoltageCalibrationFactor = iotwebconf::NumberParameter("Voltage calibration factor", _VoltageCalibrationFactorID, _VoltageCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
     iotwebconf::NumberParameter _CurrentCalibrationFactor = iotwebconf::NumberParameter("Current calibration factor", _CurrentCalibrationFactorID, _CurrentCalibrationFactorValue, NUMBER_LEN, "1.0000", "-5.00000 - 5.00000", "min='-5.00000' max='5.00000' step='0.00001'");
