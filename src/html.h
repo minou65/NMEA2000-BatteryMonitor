@@ -14,7 +14,7 @@ function updateData(jsonData) {
    document.getElementById('SocValue').innerHTML = jsonData.soc + "%";
    document.getElementById('tTgValue').innerHTML = jsonData.ttg;
    document.getElementById('isFullValue').innerHTML = jsonData.isFull;
-   document.getElementById('TemperatureValue').innerHTML = jsonData.temperature + "&deg;C";
+   document.getElementById('TemperatureValue').innerHTML = parseFloat(jsonData.temperature).toFixed(1) + "&deg;C";
    document.getElementById('Mode').innerHTML = jsonData.mode;
    
    // Statistics Updates
@@ -24,8 +24,8 @@ function updateData(jsonData) {
    document.getElementById('amountChargedEnergy').innerHTML = jsonData.amountChargedEnergy + "kWh";
    document.getElementById('deepestDischarge').innerHTML = jsonData.deepestDischarge + "Ah";
    document.getElementById('lastDischarge').innerHTML = jsonData.lastDischarge + "Ah";
-   document.getElementById('deepestTemperatur').innerHTML = jsonData.deepestTemperatur + "&deg;C";
-   document.getElementById('highestTemperatur').innerHTML = jsonData.highestTemperatur + "&deg;C";
+   document.getElementById('deepestTemperatur').innerHTML = parseFloat(jsonData.deepestTemperatur).toFixed(1) + "&deg;C";
+   document.getElementById('highestTemperatur').innerHTML = parseFloat(jsonData.highestTemperatur).toFixed(1) + "&deg;C";
    document.getElementById('TimeSinceLastFull').innerHTML = jsonData.TimeSinceLastFull;
    document.getElementById('numChargeCycles').innerHTML = jsonData.numChargeCycles;
    document.getElementById('numAutoSyncs').innerHTML = jsonData.numAutoSyncs;
