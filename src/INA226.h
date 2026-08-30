@@ -26,6 +26,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "WProgram.h"
 #endif
 
+#include <Wire.h>
+
 #define INA226_ADDRESS              (0x40)
 
 #define INA226_REG_CONFIG           (0x00)
@@ -142,6 +144,10 @@ class INA226
 	float getMaxShuntVoltage(void);
 	float getMaxPower(void);
 
+    // Power management functions
+    bool powerDown(void);
+    bool wakeUp(void);
+
 private:
     TwoWire *wire;
 
@@ -159,5 +165,7 @@ private:
 	bool writeRegister16(uint8_t reg, uint16_t val);
 	int16_t readRegister16(uint8_t reg);
 };
+
+extern INA226 ina;
 
 #endif

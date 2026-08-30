@@ -23,8 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <WProgram.h>
 #endif
 
-#include <Wire.h>
 #include "INA226.h"
+
+INA226 ina(Wire);
 
 INA226::INA226(TwoWire &w) : inaAddress(0), currentLSB(0), powerLSB(0), vShuntMax(0.08192f), vBusMax(36), rShunt(0) {
   wire = &w;
@@ -110,6 +111,20 @@ float INA226::getMaxShuntVoltage(void)
 float INA226::getMaxPower(void)
 {
     return (getMaxCurrent() * vBusMax);
+}
+
+bool INA226::powerDown(void) {
+    uint16_t config = readRegister16(INA226_REG_CONFIG);
+    config &= ~0x0007;  // Clear mode bits
+    config |= INA226_MODE_POWER_DOWN;  // Set power-down mode
+    return writeRegister16(INA226_REG_CONFIG, config);
+}
+
+bool INA226::wakeUp(void) {
+    uint16_t config = readRegister16(INA226_REG_CONFIG);
+    config &= ~0x0007;  // Clear mode bits
+    config |= INA226_MODE_SHUNT_BUS_CONT;  // Set continuous mode
+    return writeRegister16(INA226_REG_CONFIG, config);
 }
 
 float INA226::readBusPower(void)
