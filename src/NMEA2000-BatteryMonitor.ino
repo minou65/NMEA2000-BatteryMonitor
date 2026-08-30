@@ -1,3 +1,5 @@
+#include "APModeConfig.h"
+#include "PowerSavingConfig.h"
 #include <Arduino.h>
 #include <esp_task_wdt.h>
 #include <RebootManager.h>
@@ -11,6 +13,7 @@
 #include "NMEAHandling.h"
 #include "version.h"
 #include "neotimer.h"
+#include "SleepManager.h"
 
 // Manufacturer's Software version code
 char Version[] = VERSION_STR;
@@ -70,11 +73,22 @@ void setup() {
 
     esp_task_wdt_add(NULL);
 
+    // Initialize sleep manager after all other initializations
+    sleepManager.begin();
+    
+    // If we woke from deep sleep, restore RTC data
+    if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_UNDEFINED) {
+        batteryStatus.readStats();
+    }
+
     eventLogger.log(F("========================================"));
     eventLogger.log(F("NMEA2000 started"));
     eventLogger.log(F("Listening for GPS time on NMEA2000 bus"));
     eventLogger.log(F("Setup complete"));
     eventLogger.log(F("========================================"));
+
+   // sleepManager.disable();
+
 }
 
 void loop() {

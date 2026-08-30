@@ -18,7 +18,6 @@ double sampleTime = 0;
 bool INA226Initialized = false;
 bool updateINA226Config = true;
 
-static INA226 ina(Wire);
 Neotimer statisticsTimer = Neotimer(1000);
 Neotimer outputTimer = Neotimer(15000);
 Neotimer savePreferenceTimer = Neotimer(180 * 60 * 1000); // 3 hours

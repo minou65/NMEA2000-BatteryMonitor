@@ -3,6 +3,7 @@
 #include "statusHandling.h"
 #include "BatteryConfig.h"
 #include "NMEAConfig.h"
+#include "SleepManager.h"
 
 #include <esp_mac.h>
 
@@ -20,6 +21,7 @@ double BatPeukertExponent = 1.251;
 
 bool TimeSet = false;
 unsigned long LastTimeUpdate = 0;
+unsigned long LastN2kMessageTime = 0;
 
 // Function prototypes for NMEA2000 message handlers
 void ParseN2kSystemTime(const tN2kMsg& N2kMsg);
@@ -147,6 +149,10 @@ void ParseN2kGNSS(const tN2kMsg& N2kMsg) {
  * Handle incoming NMEA2000 messages
  */
 void handleN2kMessages(const tN2kMsg& N2kMsg) {
+    // Reset sleep timer on any received message
+    sleepManager.resetActivityTimer();
+    LastN2kMessageTime = millis();
+    
     for (uint8_t i = 0; NMEA2000Handlers[i].PGN != 0; i++) {
         if (N2kMsg.PGN == NMEA2000Handlers[i].PGN) {
             NMEA2000Handlers[i].Handler(N2kMsg);
@@ -306,9 +312,16 @@ void SendN2kBattery(void) {
 }
 
 void N2Kloop() {
-
+    unsigned long beforeParse = millis();
+    
     SendN2kBattery();
     NMEA2000.ParseMessages();
+    
+    // Check if messages were received during ParseMessages
+    // If LastN2kMessageTime was updated, activity was detected
+    if (LastN2kMessageTime >= beforeParse) {
+        sleepManager.resetActivityTimer();
+    }
 
     CheckN2kSourceAddressChange();
 
@@ -316,6 +329,9 @@ void N2Kloop() {
         eventLogger.log(F("Warning: No time update received for 1 hour"));
         TimeSet = false;
     }
+
+    // Check if we should enter sleep mode
+    sleepManager.loop();
 
     // Dummy to empty input buffer to avoid board to stuck with e.g. NMEA Reader
     if (Serial.available()) {
