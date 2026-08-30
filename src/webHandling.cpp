@@ -12,13 +12,16 @@
 #endif
 
 #include "common.h"
+#include "html.h"
 #include "webHandling.h"
 #include "statusHandling.h"
 #include "favicon.h"
 #include "neotimer.h"
 #include "BatteryConfig.h"
 #include "NMEAConfig.h"
-#include "html.h"
+#include "PowerSavingConfig.h"
+#include "APModeConfig.h"
+#include "SleepManager.h"
 
 #include <DNSServer.h>
 #include <IotWebConfAsyncTab.h>
@@ -76,12 +79,6 @@ BatteryConfig batteryConfig = BatteryConfig();
 BatteryFullConfig batteryFullConfig = BatteryFullConfig();
 ShuntConfig shuntConfig = ShuntConfig();
 
-char APModeValue[STRING_LEN];
-iotwebconf::CheckboxParameter APModeParam = iotwebconf::CheckboxParameter("start AP only at boot sequence", "APModeID", APModeValue, STRING_LEN, false);
-
-char APModeOfflineValue[STRING_LEN];
-iotwebconf::NumberParameter APModeOfflineParam = iotwebconf::NumberParameter("AP offline mode after (minutes)", "APModeOffline", APModeOfflineValue, NUMBER_LEN, "0", "0..30", "min='0' max='30', step='1'");
-
 class CustomHtmlFormatProvider : public AsyncTabHtmlFormatProvider {
 public:
     CustomHtmlFormatProvider(std::vector<AsyncTabInfo>* tabs, int minWidth = 500, int maxWidth = 600)
@@ -117,6 +114,9 @@ void wifiSetup() {
     iotWebConf.setSystemTabPosition(-1);  // -1 = letzte Position
     iotWebConf.setSystemTabName("System");
 
+    iotWebConf.addParameterGroup(&apModeConfig, "System");
+    iotWebConf.addParameterGroup(&powerSavingConfig, "System");
+
     // Battery Tab
     iotWebConf.addParameterGroup(&batteryConfig, "Battery");
     iotWebConf.addParameterGroup(&batteryFullConfig, "Battery");
@@ -127,9 +127,6 @@ void wifiSetup() {
     // NMEA Tab
     iotWebConf.addParameterGroup(&nmeaConfig, "NMEA");
 
-    // System Parameters
-    iotWebConf.addSystemParameter(&APModeParam);
-    iotWebConf.addSystemParameter(&APModeOfflineParam);
 
     // CustomHtmlFormatProvider mit Tabs-Vektor erstellen
     auto customProvider = new CustomHtmlFormatProvider(iotWebConf.getTabsVector());
@@ -253,7 +250,7 @@ void wifiLoop() {
         SaveParams = false;
     }
 
-    if ((iotWebConf.getState() == iotwebconf::OnLine) && (APModeParam.isChecked()) && startAPMode) {
+    if ((iotWebConf.getState() == iotwebconf::OnLine) && (apModeConfig.isStartOnlyAtBoot()) && startAPMode) {
         eventLogger.log(F("start AP mode only at boot sequence"));
         startAPMode = false;
     }
@@ -572,8 +569,8 @@ void handlePost(AsyncWebServerRequest* request) {
 		batteryFullConfig.applyDefaultValues();
 		batteryConfig.applyDefaultValues();
 
-		APModeOfflineParam.applyDefaultValue();
-		APModeParam.applyDefaultValue();
+		apModeConfig.applyDefaultValues();
+		powerSavingConfig.applyDefaultValues();
 
         iotWebConf.saveConfig();
 
@@ -720,7 +717,15 @@ void handleConfigSavedPage(iotwebconf::WebRequestWrapper* webRequestWrapper) {
 }
 
 void convertParams() {
-    APModeOfflineTime = atoi(APModeOfflineValue);
+    APModeOfflineTime = apModeConfig.getOfflineTime();
+
+    // Apply power saving settings to SleepManager
+    sleepManager.setEnabled(powerSavingConfig.isEnabled());
+    sleepManager.setTimeout(powerSavingConfig.getTimeout() * 60 * 1000); // Convert minutes to milliseconds
+
+    eventLogger.logf("Power Saving: %s, Timeout: %lu min",
+        powerSavingConfig.isEnabled() ? "Enabled" : "Disabled",
+        powerSavingConfig.getTimeout());
 
     ArduinoOTA.setHostname(iotWebConf.getThingName());
 }
@@ -730,15 +735,15 @@ void configSaved(){
   ParamsChanged = true;
   
 
-  if (!APModeParam.isChecked()) {
-	  Serial.println(F("start allways AP mode"));
-	  startAPMode = true;
+  if (!apModeConfig.isStartOnlyAtBoot()) {
+      eventLogger.log(F("start always AP mode"));
+      startAPMode = true;
   }
-  Serial.println(F("Parameters are saved"));
+  eventLogger.log(F("Parameters are saved"));
 } 
 
 void connectWifi(const char* ssid, const char* password){
-	Serial.println("Connecting to WiFi ...");
+	eventLogger.log(F("Connecting to WiFi ..."));
     WiFi.begin(ssid, password);
 }
 
