@@ -402,13 +402,28 @@ FodyWeavers.xsd
 *.sln.iml
 .vscode/settings.json
 /img/Thumbs.db
-src/*.bin
-src/board.txt
-/stl/Thumbs.db
-/sch/Thumbs.db
+/src/Powerbox.ino.nodemcu-32s.bin
+doc/LED-Time-Control-TC420.pdf
+icon/icons8-aquarium-office-l-favicons/web/Thumbs.db
 
-# EAGLE/KiCad backup revisions (keep main schematic/board files)
-*.s#[0-9]*
-*.b#[0-9]*
-!*.sch
-!*.brd
+
+# PlatformIO
+.pio/
+.piolibdeps/
+.clangd/
+
+# Lokale Python-Umgebungen (falls später verwendet)
+.venv/
+venv/
+
+# PlatformIO Coredumps
+coredump.*
+
+# Lokale Build-Artefakte
+*.elf
+*.map
+*.bin
+*.hex
+
+
+Thumbs.db
