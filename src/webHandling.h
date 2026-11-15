@@ -3,13 +3,9 @@
 #ifndef _WEBHANDLING_h
 #define _WEBHANDLING_h
 
-#if defined(ARDUINO) && ARDUINO >= 100
-#include "arduino.h"
-#else
-#include "WProgram.h"
-#endif
-
+#include <Arduino.h>
 #include <IotWebConfAsyncTab.h>
+
 #include "common.h"
 
 // -- Initial password to connect to the Thing, when it creates an own Access Point.

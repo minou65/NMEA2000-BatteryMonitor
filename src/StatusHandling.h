@@ -1,9 +1,9 @@
-
-#pragma once
+#ifndef STATUS_HANDLING_H
+#define STATUS_HANDLING_H
 
 #include <Arduino.h>
-#include "RingBuf.h"
 
+#include "RingBuf.h"
 
 static const int MAGICKEY = 0x343332;
 struct Statistics {
@@ -36,8 +36,8 @@ struct Statistics {
     unsigned int numHighVoltageAlarms;
     double amountDischargedEnergy; // kWh
     double amountChargedEnergy; // kWh
-    float deepestTemperatur; // °C
-    float highestTemperatur; // °C
+    float deepestTemperatur; // ï¿½C
+    float highestTemperatur; // ï¿½C
 };
 
 
@@ -120,3 +120,5 @@ public:
 };
 
 extern BatteryStatus batteryStatus;
+
+#endif // STATUS_HANDLING_H

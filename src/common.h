@@ -21,10 +21,6 @@ extern bool debugSOC;
 extern bool debugTTG;
 extern bool debugConsumption;
 
-#define DEBUG_PRINT(x) if (debugMode) Serial.print(x) 
-#define DEBUG_PRINTLN(x) if (debugMode) Serial.println(x)
-#define DEBUG_PRINTF(...) if (debugMode) Serial.printf(__VA_ARGS__)
-
 #define STRING_LEN 50
 #define NUMBER_LEN 10
 #define DATE_LEN 11

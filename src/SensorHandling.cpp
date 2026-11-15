@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <neotimer.h>
 #include <EventLogger.h>
 
 #include "common.h"
@@ -7,7 +8,6 @@
 #include "INA226EnumToString.h"
 #include "sensorHandling.h"
 #include "statusHandling.h"
-#include "neotimer.h"
 #include "BatteryConfig.h"
 
 bool debugAhCounter = false;
@@ -28,7 +28,7 @@ String getCurrentTime() {
     time_t now_ = time(nullptr);
     struct tm* timeInfo_ = localtime(&now_);
 
-    char buffer_[9]; // Puffer für "H:m:s"
+    char buffer_[9]; // Puffer fï¿½r "H:m:s"
     strftime(buffer_, sizeof(buffer_), "%H:%M:%S", timeInfo_);
 
     return String(buffer_);
@@ -102,17 +102,17 @@ uint16_t translateSampleCount(ina226_averages_t value) {
 }
 
 void checkConfig() {
-    eventLogger.log(F("Configuration of INA226"));
-    eventLogger.logf("    Mode:                  %s", INA226EnumTypeToStr(ina.getMode()));
-    eventLogger.logf("    Samples average:       %s", INA226EnumTypeToStr(ina.getAverages()));
-    eventLogger.logf("    Bus conversion time:   %s", INA226EnumTypeToStr((ina226_busConvTime_t)ina.getBusConversionTime()));
-    eventLogger.logf("    Shunt conversion time: %s", INA226EnumTypeToStr(ina.getShuntConversionTime()));
-    eventLogger.logf("    Max possible current:  %.3f A", ina.getMaxPossibleCurrent());
-    eventLogger.logf("    Max current:           %.3f A", ina.getMaxCurrent());
-    eventLogger.logf("    Max shunt voltage:     %.5f V", ina.getMaxShuntVoltage());
-    eventLogger.logf("    Max power:             %.3f W", ina.getMaxPower());
-    eventLogger.logf("    Shunt resistance:      %.5f R", shuntConfig.ShuntResistance());
-    eventLogger.logf("    Shunt max current:     %i A", shuntConfig.MaxCurrent());
+    LOG_DEBUG("Configuration of INA226");
+    LOG_DEBUG_AT(1, "Mode:                  %s", INA226EnumTypeToStr(ina.getMode()));
+    LOG_DEBUG_AT(1, "Samples average:       %s", INA226EnumTypeToStr(ina.getAverages()));
+    LOG_DEBUG_AT(1, "Bus conversion time:   %s", INA226EnumTypeToStr((ina226_busConvTime_t)ina.getBusConversionTime()));
+    LOG_DEBUG_AT(1, "Shunt conversion time: %s", INA226EnumTypeToStr(ina.getShuntConversionTime()));
+    LOG_DEBUG_AT(1, "Max possible current:  %.3f A", ina.getMaxPossibleCurrent());
+    LOG_DEBUG_AT(1, "Max current:           %.3f A", ina.getMaxCurrent());
+    LOG_DEBUG_AT(1, "Max shunt voltage:     %.5f V", ina.getMaxShuntVoltage());
+    LOG_DEBUG_AT(1, "Max power:             %.3f W", ina.getMaxPower());
+    LOG_DEBUG_AT(1, "Shunt resistance:      %.5f R", shuntConfig.ShuntResistance());
+    LOG_DEBUG_AT(1, "Shunt max current:     %i A", shuntConfig.MaxCurrent());
 }
 
 void setupSensor() {
@@ -124,7 +124,7 @@ void setupSensor() {
 
     // Check if the connection was successful, stop if not
     if (!INA226Initialized) {
-        eventLogger.log(F("Connection to sensor failed"));
+        LOG_ERROR("Connection to sensor failed");
         return;
     }
     // Configure INA226
@@ -132,7 +132,7 @@ void setupSensor() {
     ina.calibrate(shuntConfig.ShuntResistance(), shuntConfig.MaxCurrent());
     ina.enableConversionReadyAlert();
 
-    eventLogger.logf("calibrate sensor: Shunt resitance = %.5fR, max currenct = %iA", shuntConfig.ShuntResistance(), shuntConfig.MaxCurrent());
+    LOG_DEBUG("calibrate sensor: Shunt resitance = %.5fR, max currenct = %iA", shuntConfig.ShuntResistance(), shuntConfig.MaxCurrent());
     batteryStatus.setParameters(
         batteryConfig.Capacity_Ah(),
         batteryConfig.ChargeEfficiency_Percent(),
@@ -175,15 +175,15 @@ void updateAhCounter() {
     batteryStatus.updateConsumption(current_, sampleTime, count_);
 
     if (debugAhCounter) {
-        eventLogger.log(F("Update Ah counter"));
-        eventLogger.logf("    current: %.2f", current_);
-        eventLogger.logf("    voltage: %.2f", batteryStatus.voltage());
-        eventLogger.logf("    sampletime: %.2f", sampleTime);
-        eventLogger.logf("    count: %i", count_);
-        eventLogger.logf("    CurrentCalibrationFactor: %.2f", shuntConfig.CurrentCalibrationFactor());
+        LOG_DEBUG("Update Ah counter");
+        LOG_DEBUG_AT(1, "current: %.2f", current_);
+        LOG_DEBUG_AT(1, "voltage: %.2f", batteryStatus.voltage());
+        LOG_DEBUG_AT(1, "sampletime: %.2f", sampleTime);
+        LOG_DEBUG_AT(1, "count: %i", count_);
+        LOG_DEBUG_AT(1, "CurrentCalibrationFactor: %.2f", shuntConfig.CurrentCalibrationFactor());
 
         if (count_ > 1) {
-            eventLogger.logf("Overflow %d", count_);
+            LOG_DEBUG_AT(1, "Overflow %d", count_);
         }
     }
 }
@@ -197,13 +197,13 @@ void sensorLoop() {
 
     if (!INA226Initialized) {
         if (statisticsTimer.repeat() && debugMode) {
-            eventLogger.log(F("Sensor not initialized"));
+            LOG_WARN("Sensor not initialized");
         }
         return;
     }
 
     if (updateINA226Config) {
-        eventLogger.logf("calibrate sensor: Shunt resitance = %.5fR, max currenct = %iA", shuntConfig.ShuntResistance(), shuntConfig.MaxCurrent());
+        LOG_DEBUG("calibrate sensor: Shunt resitance = %.5fR, max currenct = %iA", shuntConfig.ShuntResistance(), shuntConfig.MaxCurrent());
         ina.calibrate(shuntConfig.ShuntResistance(), shuntConfig.MaxCurrent());
         batteryStatus.setParameters(
             batteryConfig.Capacity_Ah(),
@@ -231,16 +231,16 @@ void sensorLoop() {
     }
 
     if (outputTimer.repeat() && debugMode) {
-        eventLogger.log(F("Battery status"));
-        eventLogger.logf("    voltage:      %.3fV", batteryStatus.voltage());
-        eventLogger.logf("    current:      %.3fA", batteryStatus.current());
-        eventLogger.logf("    average:      %.3fA", batteryStatus.averageCurrent());
-        eventLogger.logf("    SOC:          %.3f", batteryStatus.soc());
-        eventLogger.logf("    TTG:          %ds", batteryStatus.tTg());
-        eventLogger.logf("    remaining As: %.3f", batteryStatus.remainingAs());
-        eventLogger.logf("    Bus voltage:   %.3fV", ina.readBusVoltage());
-        eventLogger.logf("    Bus power:     %.3fW", ina.readBusPower());
-        eventLogger.logf("    Shunt voltage: %.3fV", ina.readShuntVoltage());
-        eventLogger.logf("    Shunt current: %.3fA", ina.readShuntCurrent());
+        LOG_DEBUG("Battery status");
+        LOG_DEBUG_AT(1, "voltage:      %.3fV", batteryStatus.voltage());
+        LOG_DEBUG_AT(1, "current:      %.3fA", batteryStatus.current());
+        LOG_DEBUG_AT(1, "average:      %.3fA", batteryStatus.averageCurrent());
+        LOG_DEBUG_AT(1, "SOC:          %.3f", batteryStatus.soc());
+        LOG_DEBUG_AT(1, "TTG:          %ds", batteryStatus.tTg());
+        LOG_DEBUG_AT(1, "remaining As: %.3f", batteryStatus.remainingAs());
+        LOG_DEBUG_AT(1, "Bus voltage:   %.3fV", ina.readBusVoltage());
+        LOG_DEBUG_AT(1, "Bus power:     %.3fW", ina.readBusPower());
+        LOG_DEBUG_AT(1, "Shunt voltage: %.3fV", ina.readShuntVoltage());
+        LOG_DEBUG_AT(1, "Shunt current: %.3fA", ina.readShuntCurrent());
     }
 }

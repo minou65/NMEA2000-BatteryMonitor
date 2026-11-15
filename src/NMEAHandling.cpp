@@ -82,7 +82,7 @@ void SetSystemTime(uint16_t DaysSince1970, double SecondsSinceMidnight) {
     char timeStr[64];
     struct tm* timeinfo = localtime(&timestamp);
     strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeinfo);
-    eventLogger.logf("System time set from NMEA2000: %s UTC", timeStr);
+    LOG_OK("System time set from NMEA2000: %s UTC", timeStr);
 
 }
 
@@ -100,7 +100,7 @@ void ParseN2kSystemTime(const tN2kMsg& N2kMsg) {
             SetSystemTime(SystemDate, SystemTime);
 
             if (debugMode) {
-                eventLogger.logf("Received System Time (PGN 126992): Date=%u, Time=%.1fs, Source=%d",
+                LOG_DEBUG("Received System Time (PGN 126992): Date=%u, Time=%.1fs, Source=%d",
                     SystemDate, SystemTime, TimeSource);
             }
         }
@@ -137,7 +137,7 @@ void ParseN2kGNSS(const tN2kMsg& N2kMsg) {
         SetSystemTime(DaysSince1970, SecondsSinceMidnight);
 
         if (debugMode) {
-            eventLogger.logf("Received GNSS Time (PGN 129029): Date=%u, Time=%.1fs, Sats=%u",
+            LOG_DEBUG("Received GNSS Time (PGN 129029): Date=%u, Time=%.1fs, Sats=%u",
                 DaysSince1970, SecondsSinceMidnight, nSatellites);
         }
     }
@@ -171,13 +171,14 @@ void CheckN2kSourceAddressChange() {
     uint8_t oldAddress = nmeaConfig.Source();
 
     if (SourceAddress_ != oldAddress) {
-        eventLogger.logf("NMEA2000 address changed from %d to %d", oldAddress, SourceAddress_);
+        LOG_INFO("NMEA2000 address changed from %d to %d", oldAddress, SourceAddress_);
         nmeaConfig.SetSource(SourceAddress_);
         SaveParams = true;
     }
 }
 
 void N2kInit() {
+    LOG_INFO("Initializing NMEA 2000...");
     uint8_t chipid[6];
     uint32_t id = 0;
     int i = 0;
@@ -209,11 +210,13 @@ void N2kInit() {
     );
 
     NMEA2000.SetMode(tNMEA2000::N2km_ListenAndNode, nmeaConfig.Source());
+    LOG_DEBUG_AT(1, "NMEA2000 device information set with source address %d", nmeaConfig.Source());
 
     NMEA2000.ExtendTransmitMessages(TransmitMessages);
     NMEA2000.ExtendReceiveMessages(ReceiveMessages);
 
 	NMEA2000.SetConfigurationInformation("", CustomName, "");
+    LOG_DEBUG_AT(1, "NMEA2000 configuration information set with custom name: %s", CustomName);
 
     NMEA2000.SetOnOpen(OnN2kOpen);
     NMEA2000.Open();
@@ -247,11 +250,11 @@ void SendN2kBattery(void) {
         bool sent_ = NMEA2000.SendMsg(N2kMsg_);
         if (debugMode) {
             if (sent_) {
-                eventLogger.logf("N2kDCBatStatus sent: V=%.2fV, I=%.2fA, T=%.1f&deg;C, SID=%d",
+                LOG_DEBUG("N2kDCBatStatus sent: V=%.2fV, I=%.2fA, T=%.1f&deg;C, SID=%d",
                     BatteryVoltage_, BatteryCurrent_, BatteryTemperature_, nmeaConfig.SID());
             }
             else {
-                eventLogger.log(F("Failed to send N2kDCBatStatus"));
+                LOG_ERROR("Failed to send N2kDCBatStatus");
             }
         }
     }
@@ -272,10 +275,10 @@ void SendN2kBattery(void) {
         bool sent_ = NMEA2000.SendMsg(N2kMsg_);
         if (debugMode) {
             if (sent_) {
-                eventLogger.logf("N2kDCStatus sent: V=%.2fV, I=%.2fA, T=%.1f&deg;C, SID=%d",
+                LOG_DEBUG("N2kDCStatus sent: V=%.2fV, I=%.2fA, T=%.1f&deg;C, SID=%d",
                     BatteryVoltage_, BatteryCurrent_, BatteryTemperature_, nmeaConfig.SID());
             } else {
-                eventLogger.log("Failed to send N2kDCStatus message");
+                LOG_ERROR("Failed to send N2kDCStatus message");
             }
         }
     }
@@ -296,10 +299,10 @@ void SendN2kBattery(void) {
         bool sent_ = NMEA2000.SendMsg(N2kMsg_);
         if (debugMode) {
             if (sent_) {
-                eventLogger.logf("N2kBatConf sent: V=%.2fV, I=%.2fA, T=%.1f&deg;C, SID=%d",
+                LOG_DEBUG("N2kBatConf sent: V=%.2fV, I=%.2fA, T=%.1f&deg;C, SID=%d",
                     BatteryVoltage_, BatteryCurrent_, BatteryTemperature_, nmeaConfig.SID());
             } else {
-                eventLogger.log("Failed to send N2kBatConf message");
+                LOG_ERROR("Failed to send N2kBatConf message");
             }
         }
     }
@@ -313,7 +316,7 @@ void N2Kloop() {
     CheckN2kSourceAddressChange();
 
     if (TimeSet && (millis() - LastTimeUpdate > 3600000)) {
-        eventLogger.log(F("Warning: No time update received for 1 hour"));
+        LOG_WARN("No time update received for 1 hour");
         TimeSet = false;
     }
 

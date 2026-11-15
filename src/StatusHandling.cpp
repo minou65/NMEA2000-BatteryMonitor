@@ -1,12 +1,9 @@
+#include <Preferences.h>
+#include <EventLogger.h>
+
 #include "common.h"
 #include "statusHandling.h"
-
-#ifdef ESP32
-#include <Preferences.h>
-#endif
-
 #include "BatteryConfig.h"
-#include <EventLogger.h>
 
 const double MAX_FLOAT = 3.4E+38; // nax value for float
 const double MIN_FLOAT = -3.4E+38; // min value forfloat
@@ -37,13 +34,13 @@ void BatteryStatus::begin() {
     stats.init();
 
     if (!readStats()) {
-        eventLogger.log(F("BatteryStatus::begin: No valid data found. Resetting stats..."));
+        LOG_WARN("BatteryStatus::begin: No valid data found. Resetting stats...");
         stats.init();
     }
     else if (stats.magic != MAGICKEY) {
-        eventLogger.log(F("BatteryStatus::begin: Invalid data found. Resetting stats..."));
-        eventLogger.logf("    stats.magic: %d", stats.magic);
-        eventLogger.logf("    MAGICKEY: %d", MAGICKEY);
+        LOG_WARN("BatteryStatus::begin: Invalid data found. Resetting stats...");
+        LOG_WARN_AT(1, "stats.magic: %d", stats.magic);
+        LOG_WARN_AT(1, "MAGICKEY: %d", MAGICKEY);
         stats.init();
     }
 }
@@ -61,14 +58,14 @@ void BatteryStatus::setParameters(uint16_t capacityAh, uint16_t chargeEfficiency
         tailCurrent = tailCurrent * -1;
     }
 
-    eventLogger.log(F("BatteryStatus::setParameters"));
-    eventLogger.logf("    capacityAh: %d", capacityAh);
-    eventLogger.logf("    capacityAs: %.3f", batteryCapacity);
-    eventLogger.logf("    chargeEfficiency: %.3f", chargeEfficiency);
-    eventLogger.logf("    tailCurrent: %.3f", tailCurrent);
-    eventLogger.logf("    fullVoltage: %.3f", fullVoltage);
-    eventLogger.logf("    minAs: %.3f", minAs);
-    eventLogger.logf("    fullDelay: %ld", fullDelay);
+    LOG_DEBUG("BatteryStatus::setParameters");
+    LOG_DEBUG_AT(1, "capacityAh: %d", capacityAh);
+    LOG_DEBUG_AT(1, "capacityAs: %.3f", batteryCapacity);
+    LOG_DEBUG_AT(1, "chargeEfficiency: %.3f", chargeEfficiency);
+    LOG_DEBUG_AT(1, "tailCurrent: %.3f", tailCurrent);
+    LOG_DEBUG_AT(1, "fullVoltage: %.3f", fullVoltage);
+    LOG_DEBUG_AT(1, "minAs: %.3f", minAs);
+    LOG_DEBUG_AT(1, "fullDelay: %ld", fullDelay);
 
 }
 
@@ -106,12 +103,12 @@ void BatteryStatus::updateSOC() {
     }
 
     if (debugSOC) {
-        eventLogger.log(F("BatteryStatus::updateSOC"));
-        eventLogger.logf("    socVal: %.3f", stats.socVal);
-        eventLogger.logf("    lastSoc: %.3f", lastSoc);
-        eventLogger.logf("    remainAs: %.3f", stats.remainAs);
-        eventLogger.logf("    batteryCapacity: %.3f", batteryCapacity);
-        eventLogger.logf("    fabs: %.3f", fabs(lastSoc - stats.socVal));
+        LOG_DEBUG("BatteryStatus::updateSOC");
+        LOG_DEBUG_AT(1, "socVal: %.3f", stats.socVal);
+        LOG_DEBUG_AT(1, "lastSoc: %.3f", lastSoc);
+        LOG_DEBUG_AT(1, "remainAs: %.3f", stats.remainAs);
+        LOG_DEBUG_AT(1, "batteryCapacity: %.3f", batteryCapacity);
+        LOG_DEBUG_AT(1, "fabs: %.3f", fabs(lastSoc - stats.socVal));
     }
    
 }
@@ -120,11 +117,11 @@ void BatteryStatus::updateTtG() {
     float _avgCurrent = getAverageConsumption() * -1;
 
     if (debugTTG) {
-        eventLogger.log(F("BatteryStatus::updateTtG"));
-        eventLogger.logf("    avgCurrent : %.3f", _avgCurrent);
-        eventLogger.logf("    TtgVal: %d", stats.tTgVal);
-        eventLogger.logf("    remainAs: %.3f", stats.remainAs);
-        eventLogger.logf("    minAs: %.3f", minAs);
+        LOG_DEBUG("BatteryStatus::updateTtG");
+        LOG_DEBUG_AT(1, "avgCurrent : %.3f", _avgCurrent);
+        LOG_DEBUG_AT(1, "TtgVal: %d", stats.tTgVal);
+        LOG_DEBUG_AT(1, "remainAs: %.3f", stats.remainAs);
+        LOG_DEBUG_AT(1, "minAs: %.3f", minAs);
     }
 
     if (_avgCurrent > 0.0) {
@@ -215,18 +212,18 @@ void BatteryStatus::updateConsumption(float current, float period, uint16_t numP
     lastCurrent = current;
 
     if (debugConsumption) {
-        eventLogger.log(F("BatteryStatus::updateConsumption"));
-        eventLogger.logf("    current: %.3f", current);
-        eventLogger.logf("    Voltage: %.3f", lastVoltage);
-        eventLogger.logf("    period: %.3f", period);
-        eventLogger.logf("    numPeriods: %d", numPeriods);
-        eventLogger.logf("    periodConsumption: %.3f", _periodConsumption);
-        eventLogger.logf("    consumption: %.3f", _consumption);
-        eventLogger.logf("    amountChargedEnergy: %.3f kWh", stats.amountChargedEnergy);
-        eventLogger.logf("    amountDischargedEnergy: %.3f kWh", stats.amountDischargedEnergy);
-        eventLogger.logf("    sumApHDrawn: %.3f Ah", stats.sumApHDrawn);
-        eventLogger.logf("    remainAs: %.3f", stats.remainAs);
-        eventLogger.logf("    consumedAs: %.3f", stats.consumedAs);
+        LOG_DEBUG("BatteryStatus::updateConsumption");
+        LOG_DEBUG_AT(1, "current: %.3f", current);
+        LOG_DEBUG_AT(1, "Voltage: %.3f", lastVoltage);
+        LOG_DEBUG_AT(1, "period: %.3f", period);
+        LOG_DEBUG_AT(1, "numPeriods: %d", numPeriods);
+        LOG_DEBUG_AT(1, "periodConsumption: %.3f", _periodConsumption);
+        LOG_DEBUG_AT(1, "consumption: %.3f", _consumption);
+        LOG_DEBUG_AT(1, "amountChargedEnergy: %.3f kWh", stats.amountChargedEnergy);
+        LOG_DEBUG_AT(1, "amountDischargedEnergy: %.3f kWh", stats.amountDischargedEnergy);
+        LOG_DEBUG_AT(1, "sumApHDrawn: %.3f Ah", stats.sumApHDrawn);
+        LOG_DEBUG_AT(1, "remainAs: %.3f", stats.remainAs);
+        LOG_DEBUG_AT(1, "consumedAs: %.3f", stats.consumedAs);
     }
 
 }

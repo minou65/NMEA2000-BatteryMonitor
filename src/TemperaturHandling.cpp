@@ -1,14 +1,13 @@
 
-#include "TemperaturHandling.h"
+
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <neotimer.h>
+#include <EventLogger.h>
 
 #include "common.h"
-#include "sensorHandling.h"
-#include "statusHandling.h"
 #include "neotimer.h"
-
-// #define DEBUG_Temperatur
+#include "TemperaturHandling.h"
 
 static const float TemperatureCalibrationFactor = 1;
 
@@ -35,10 +34,10 @@ void TemperaturLoop() {
 		Temperatur = sensors.getTempCByIndex(0) * TemperatureCalibrationFactor;
 	}
 
-#ifdef DEBUG_Temperatur
-    Serial.print("Temperatur:   ");
-    Serial.println(double(batteryStatus.temperatur()));
-#endif // DEBUG_Temperatur
+
+    if (debugMode) {
+        LOG_DEBUG("Temperatur: %f", double(Temperatur));
+    }
 }
 
 volatile float GetTemperatur() {

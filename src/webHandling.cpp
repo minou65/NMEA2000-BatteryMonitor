@@ -1,50 +1,36 @@
 // #define DEBUG_WIFI(m) SERIAL_DBG.print(m)
 
 #include <Arduino.h>
-#include <ArduinoOTA.h>
-
-#if defined(ESP32)
 #include <WiFi.h>
-#elif defined(ESP8266)
-#include <ESP8266WiFi.h>
-#else
-#error "Unsupported platform"
-#endif
+#include <neotimer.h>
+
+#include <DNSServer.h>
+#include <IotWebConfAsyncTab.h>
+#include <IotWebConfAsyncUpdateServer.h>
+#include <IotWebRootTab.h>
+#include <ArduinoJson.h>
+
+#include <EventLogger.h>
+#include <RebootManager.h>
+#include <N2kTypes.h>
 
 #include "common.h"
 #include "html.h"
 #include "webHandling.h"
 #include "statusHandling.h"
 #include "favicon.h"
-#include "neotimer.h"
 #include "BatteryConfig.h"
 #include "NMEAConfig.h"
-#include "PowerSavingConfig.h"
 #include "APModeConfig.h"
-#include "SleepManager.h"
-
-#include <DNSServer.h>
-#include <IotWebConfAsyncTab.h>
-#include <IotWebConfAsyncUpdateServer.h>
-#include <IotWebRootTab.h>
-#include <RebootManager.h>
-
-#include <EventLogger.h>
-// WebSerial High Performance Mode - sendet Nachrichten sofort
-#define WSL_HIGH_PERF
-#include <WebSerial.h>
-
-#include <N2kTypes.h>
 
 // -- Method declarations.
 void handleSetRuntime(AsyncWebServerRequest* request);
 void onSetSoc(AsyncWebServerRequest* request);
 void onResetStatistics(AsyncWebServerRequest* request);
-void onProgress(size_t prg, size_t sz);
 void handleData(AsyncWebServerRequest* request);
 void handleRoot(AsyncWebServerRequest* request);
 void handlePost(AsyncWebServerRequest* request);
-void handleWebSerialCommand(uint8_t* data, size_t len);
+void handleWebCommand(const String& command);
 void handleReboot(AsyncWebServerRequest* request);
 void handleConfigSavedPage(iotwebconf::WebRequestWrapper* webRequestWrapper);
 void convertParams();
@@ -65,11 +51,6 @@ bool SaveParams = false;
 bool startAPMode = true;
 uint8_t APModeOfflineTime = 0;
 bool ShouldReboot = false;
-
-// WebSerial state tracking
-static int previousConnectionCount = 0;
-static unsigned long lastConnectionChange = 0;
-static bool waitingToSendHistory = false;
 
 char CustomName[64] = "NMEA-Batterymonitor";
 
@@ -99,13 +80,11 @@ void wifiStoreConfig() {
 }
 
 void wifiConnected(){
-   ArduinoOTA.begin();
+    WiFi.setSleep(false);
+    LOG_INFO("WiFi modem sleep disabled");  
 }
 
 void wifiSetup() {
-
-
-     
     iotWebConf.setStatusPin(STATUS_PIN,ON_LEVEL);
     iotWebConf.setConfigPin(CONFIG_PIN);
 
@@ -115,7 +94,6 @@ void wifiSetup() {
     iotWebConf.setSystemTabName("System");
 
     iotWebConf.addParameterGroup(&apModeConfig, "System");
-    iotWebConf.addParameterGroup(&powerSavingConfig, "System");
 
     // Battery Tab
     iotWebConf.addParameterGroup(&batteryConfig, "Battery");
@@ -134,7 +112,18 @@ void wifiSetup() {
     iotWebConf.setHtmlFormatProvider(customProvider);
 
     iotWebConf.setupUpdateServer(
-        [](const char* updatePath) { AsyncUpdater.setup(&server, updatePath, onProgress); },
+        [](const char* updatePath) {
+            AsyncUpdater.onBegin([](const String& message) {
+                LOG_INFO("%s", message.c_str());
+                });
+            AsyncUpdater.onEnd([](const String& message) { LOG_OK("%s", message.c_str()); });
+            AsyncUpdater.OnError([](const String& message) {
+                LOG_ERROR("%s", message.c_str());
+                });
+            AsyncUpdater.onProgress([](const String& message) { LOG_INFO("%s", message.c_str()); });
+            AsyncUpdater.onLog([](const String& message) { WEB_LOG_INFO("%s", message.c_str()); });
+            AsyncUpdater.setup(&server, updatePath);
+        },
         [](const char* userName, char* password) { AsyncUpdater.updateCredentials(userName, password); });
   
     iotWebConf.setConfigSavedCallback(&configSaved);
@@ -175,7 +164,15 @@ void wifiSetup() {
     server.on("/post", HTTP_ANY, [](AsyncWebServerRequest* request) { handlePost(request); });
     server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest* request) { handleReboot(request); });
 
+  // EventLogger Web initialisieren
+    bool webOk_ = eventLogger.beginWeb(&server, "/events");
+    if (!webOk_) {
+        eventLogger.log("EventLogger.beginWeb failed", EventLogger::Status::ERROR, 1);
+    }
 
+    eventLogger.setCommandCallback([](const String& command_) {
+        handleWebCommand(command_);
+        });
 
     server.onNotFound([](AsyncWebServerRequest* request) {
             AsyncWebRequestWrapper asyncWebRequestWrapper(request);
@@ -183,65 +180,12 @@ void wifiSetup() {
         }
     );
 
-    // WebSerial Initialisierung
-    WebSerial.begin(&server, "/webserial");
-
-    // Handler für eingehende Nachrichten
-    WebSerial.onMessage(handleWebSerialCommand);
-
-    // Callback für Live-Updates registrieren
-    eventLogger.setLiveCallback([](const EventLogger::Event& event_) {
-        WebSerial.println(eventLogger.formatEvent(event_));
-        }
-    );
-
     if (APModeOfflineTime > 0) {
         APModeTimer.start(APModeOfflineTime * 60 * 1000);
     }
-
-    eventLogger.log(F("Web server successfully initialized"));
 }
 
 void wifiLoop() {
-    // -- doLoop should be called as frequently as possible.
-	WebSerial.loop();
-    iotWebConf.doLoop();
-    ArduinoOTA.handle();
-
-    // Connection Count prüfen
-    int currentConnectionCount = WebSerial.getConnectionCount();
-
-    // Verbindungsänderung erkannt
-    if (currentConnectionCount != previousConnectionCount) {
-        if (currentConnectionCount > 0) {
-            // Neue Verbindung
-            waitingToSendHistory = true;
-            lastConnectionChange = millis();
-        }
-        previousConnectionCount = currentConnectionCount;
-    }
-
-
-    // Nach 500ms Historie senden
-    if (waitingToSendHistory && currentConnectionCount > 0 && (millis() - lastConnectionChange) >= 500) {
-        waitingToSendHistory = false;
-
-        WebSerial.println();
-        WebSerial.println("=== WebSerial ===");
-        WebSerial.println("Type 'help' for available commands");
-        WebSerial.println();
-
-        auto events_ = eventLogger.getEvents();
-        if (!events_.empty()) {
-            WebSerial.println("=== Event History (" + String(events_.size()) + " events) ===");
-            for (const auto& event_ : events_) {
-                WebSerial.println(eventLogger.formatEvent(event_));
-            }
-            WebSerial.println();
-        }
-        WebSerial.println("=== Live Events ===");
-        WebSerial.println();
-    }
 
     if (SaveParams) {
         eventLogger.log(F("Parameters are changed,save them"));
@@ -269,16 +213,6 @@ void wifiLoop() {
     }
 }
 
-void onProgress(size_t prg, size_t sz) {
-    static size_t lastPrinted = 0;
-    size_t currentPercent = (prg * 100) / sz;
-
-    if (currentPercent % 5 == 0 && currentPercent != lastPrinted) {
-        eventLogger.logf("Progress: %d%%", currentPercent);
-        lastPrinted = currentPercent;
-    }
-}
-
 void onSetSoc(AsyncWebServerRequest* request) {
     if (!request->hasArg("soc")) {
         request->send(400, "text/plain", "Missing SOC parameter");
@@ -303,91 +237,94 @@ void onSetSoc(AsyncWebServerRequest* request) {
     batteryStatus.setBatterySoc(socVal_);
     batteryStatus.writeStats();
 
-    Serial.printf("SOC set to %d%%\n", socInt_);
-    WebSerial.printf("SOC set to %d%%\n", socInt_);
+    LOG_INFO("SOC set to %d%%", socInt_);
 
-    // Use PROGMEM string from html.h
     request->send_P(200, "text/html", html_soc_response);
 }
 
 void onResetStatistics(AsyncWebServerRequest* request) {
     batteryStatus.resetStats();
 
-    Serial.println("Statistics reset");
-    WebSerial.println("Statistics reset");
+    LOG_INFO("Statistics reset");
 
-    // Use PROGMEM string from html.h
     request->send_P(200, "text/html", html_stats_reset_response);
 }
 
 void handleData(AsyncWebServerRequest* request) {
-	String json_ = "{";
-	json_ += "\"rssi\":" + String(WiFi.RSSI()) + ",";
-	json_ += "\"voltage\":" + String(batteryStatus.voltage(), 2) + ",";
-	json_ += "\"current\":" + String(batteryStatus.current(), 2) + ",";
-	json_ += "\"avgCurrent\":" + String(batteryStatus.averageCurrent(), 2) + ",";
-	json_ += "\"soc\":" + String(batteryStatus.soc() * 100, 1) + ",";
-	if (batteryStatus.tTg() != 4294967295) {
-        String hours_ = String(batteryStatus.tTg() / 3600);
-        String minutes_ = String((batteryStatus.tTg() % 3600) / 60);
-        if (minutes_.length() < 2) minutes_ = "0" + minutes_;
-        if (hours_.length() < 2) hours_ = "0" + hours_;
-        json_ += "\"tTg\":\"" + hours_ + ":" + minutes_ + "\",";
-	}
-	else {
-		json_ += "\"tTg\":\"00:00\",";
-	}
-    json_ += "\"mode\":\"" + String(batteryStatus.current() >= 0 ? "charging" : "discharging") + "\",";
-    json_ += "\"isFull\":\"" + String(batteryStatus.isFull() ? "true" : "false") + "\",";
-	json_ += "\"temperature\":" + String(batteryStatus.temperatur(), 1) + ",";
-	json_ += "\"batteryType\":\"" + String(BatTypeNames[batteryConfig.Type()]) + "\",";
-	json_ += "\"batteryVoltage\":\"" + String(BatNomVoltNames[batteryConfig.NomVolt()]) + "\",";
-	json_ += "\"batteryChemistry\":\"" + String(BatChemNames[batteryConfig.Chemistry()]) + "\",";
-	json_ += "\"capacity\":" + String(batteryConfig.Capacity_Ah()) + ",";
-	json_ += "\"chargeEfficiency\":" + String(batteryConfig.ChargeEfficiency_Percent()) + ",";
-	json_ += "\"minSoc\":" + String(batteryConfig.MinSoc_Percent()) + ",";
-	json_ += "\"tailCurrent\":" + String((batteryFullConfig.TailCurrent_mA() / 1000.00f), 3) + ","; 
-	json_ += "\"fullVoltage\":" + String((batteryFullConfig.FullVoltage_mV() / 1000.00f), 2) + ",";
-	json_ += "\"fullDelay\":" + String(batteryFullConfig.FullDelay_s()) + ",";
-	json_ += "\"currentThreshold\":" + String(batteryFullConfig.CurrentThreshold_A(), 3) + ",";
-	json_ += "\"shuntResistance\":" + String(shuntConfig.ShuntResistance(), 5) + ",";
-	json_ += "\"maxCurrent\":" + String(shuntConfig.MaxCurrent()) + ",";
-	json_ += "\"voltageCalibrationFactor\":" + String(shuntConfig.VoltageCalibrationFactor()) + ","; 
-	json_ += "\"currentCalibrationFactor\":" + String(shuntConfig.CurrentCalibrationFactor()) + ",";
+    JsonDocument doc_;
+    const Statistics& stats_ = batteryStatus.statistics();
+    const auto rounded_ = [](double value_, double scale_) {
+        return round(value_ * scale_) / scale_;
+    };
 
-	json_ += "\"consumedAh\":" + String(batteryStatus.statistics().consumedAs / 3600.00f, 3) + ","; // Ah
-	json_ += "\"consumedAs\":" + String(batteryStatus.statistics().consumedAs, 2) + ","; //As
-	json_ += "\"deepestDischarge\":" + String(batteryStatus.statistics().deepestDischarge / 1000.00f, 3) + ","; // Ah
-	json_ += "\"lastDischarge\":" + String(batteryStatus.statistics().lastDischarge / 1000.00f, 3) + ","; // Ah
-	json_ += "\"averageDischarge\":" + String(batteryStatus.statistics().averageDischarge / 1000.00f, 3) + ","; //Ah
-	json_ += "\"numChargeCycles\":" + String(batteryStatus.statistics().numChargeCycles) + ",";
-	json_ += "\"numFullDischarge\":" + String(batteryStatus.statistics().numFullDischarge) + ",";
-	json_ += "\"sumApHDrawn\":" + String(batteryStatus.statistics().sumApHDrawn, 3) + ",";  //Ah
-	json_ += "\"minBatVoltage\":" + String(batteryStatus.statistics().minBatVoltage / 1000.00f, 2) + ","; // V
-	json_ += "\"maxBatVoltage\":" + String(batteryStatus.statistics().maxBatVoltage / 1000.00f, 2) + ","; // V
+    doc_["rssi"] = WiFi.RSSI();
+    doc_["voltage"] = rounded_(batteryStatus.voltage(), 100);
+    doc_["current"] = rounded_(batteryStatus.current(), 100);
+    doc_["avgCurrent"] = rounded_(batteryStatus.averageCurrent(), 100);
+    doc_["soc"] = rounded_(batteryStatus.soc() * 100, 10);
 
-    String hours2_ = String(batteryStatus.statistics().secsSinceLastFull / 3600);
-    String minutes2_ = String((batteryStatus.statistics().secsSinceLastFull % 3600) / 60);
-    String seconds2_ = String(batteryStatus.statistics().secsSinceLastFull % 60);
-    if (seconds2_ == "-1") {
-        seconds2_ = "0";
+    char timeToGo_[24];
+    unsigned int ttg_ = batteryStatus.tTg();
+    if (ttg_ == UINT32_MAX) {
+        ttg_ = 0;
     }
-    if (minutes2_.length() < 2) minutes2_ = "0" + minutes2_;
-    if (hours2_.length() < 2) hours2_ = "0" + hours2_;
-    if (seconds2_.length() < 2) seconds2_ = "0" + seconds2_;
-    json_ += "\"TimeSinceLastFull\":\"" + hours2_ + ":" + minutes2_ + ":" + seconds2_ + "\",";
+    snprintf(timeToGo_, sizeof(timeToGo_), "%02u:%02u", ttg_ / 3600, (ttg_ % 3600) / 60);
+    doc_["ttg"] = timeToGo_;
+    doc_["mode"] = batteryStatus.current() >= 0 ? "charging" : "discharging";
+    doc_["isFull"] = batteryStatus.isFull() ? "true" : "false";
+    doc_["temperature"] = rounded_(batteryStatus.temperatur(), 10);
+    doc_["batteryType"] = BatTypeNames[batteryConfig.Type()];
+    doc_["batteryVoltage"] = BatNomVoltNames[batteryConfig.NomVolt()];
+    doc_["batteryChemistry"] = BatChemNames[batteryConfig.Chemistry()];
+    doc_["capacity"] = batteryConfig.Capacity_Ah();
+    doc_["chargeEfficiency"] = batteryConfig.ChargeEfficiency_Percent();
+    doc_["minSoc"] = batteryConfig.MinSoc_Percent();
+    doc_["tailCurrent"] = rounded_(batteryFullConfig.TailCurrent_mA() / 1000.00f, 1000);
+    doc_["fullVoltage"] = rounded_(batteryFullConfig.FullVoltage_mV() / 1000.00f, 100);
+    doc_["fullDelay"] = batteryFullConfig.FullDelay_s();
+    doc_["currentThreshold"] = rounded_(batteryFullConfig.CurrentThreshold_A(), 1000);
+    doc_["shuntResistance"] = rounded_(shuntConfig.ShuntResistance(), 100000);
+    doc_["maxCurrent"] = rounded_(shuntConfig.MaxCurrent(), 100);
+    doc_["voltageCalibrationFactor"] = rounded_(shuntConfig.VoltageCalibrationFactor(), 100);
+    doc_["currentCalibrationFactor"] = rounded_(shuntConfig.CurrentCalibrationFactor(), 100);
 
-	json_ += "\"secsSinceLastFull\":" + String(batteryStatus.statistics().secsSinceLastFull) + ",";
-	json_ += "\"numAutoSyncs\":" + String(batteryStatus.statistics().numAutoSyncs) + ",";
-	json_ += "\"numLowVoltageAlarms\":" + String(batteryStatus.statistics().numLowVoltageAlarms) + ",";
-	json_ += "\"numHighVoltageAlarms\":" + String(batteryStatus.statistics().numHighVoltageAlarms) + ",";
-	json_ += "\"amountDischargedEnergy\":" + String(batteryStatus.statistics().amountDischargedEnergy, 3) + ","; //kWh
-	json_ += "\"amountChargedEnergy\":" + String(batteryStatus.statistics().amountChargedEnergy, 3) + ","; // kWh
-	json_ += "\"deepestTemperatur\":" + String(batteryStatus.statistics().deepestTemperatur, 2) + ","; //�C
-	json_ += "\"highestTemperatur\":" + String(batteryStatus.statistics().highestTemperatur, 2) + ""; //�C
+    doc_["consumedAh"] = rounded_(stats_.consumedAs / 3600.00f, 1000);
+    doc_["consumedAs"] = rounded_(stats_.consumedAs, 100);
+    doc_["deepestDischarge"] = rounded_(stats_.deepestDischarge / 1000.00f, 1000);
+    doc_["lastDischarge"] = rounded_(stats_.lastDischarge / 1000.00f, 1000);
+    doc_["averageDischarge"] = rounded_(stats_.averageDischarge / 1000.00f, 1000);
+    doc_["numChargeCycles"] = stats_.numChargeCycles;
+    doc_["numFullDischarge"] = stats_.numFullDischarge;
+    doc_["sumApHDrawn"] = rounded_(stats_.sumApHDrawn, 1000);
+    doc_["minBatVoltage"] = rounded_(stats_.minBatVoltage / 1000.00f, 100);
+    doc_["maxBatVoltage"] = rounded_(stats_.maxBatVoltage / 1000.00f, 100);
 
-	json_ += "}";
-	request->send(200, "application/json", json_);
+    char sinceFull_[24];
+    int seconds_ = stats_.secsSinceLastFull;
+    if (seconds_ == -1) {
+        seconds_ = 0;
+    }
+    snprintf(sinceFull_, sizeof(sinceFull_), "%02d:%02d:%02d",
+        seconds_ / 3600, (seconds_ % 3600) / 60, seconds_ % 60);
+    doc_["TimeSinceLastFull"] = sinceFull_;
+
+    doc_["secsSinceLastFull"] = stats_.secsSinceLastFull;
+    doc_["numAutoSyncs"] = stats_.numAutoSyncs;
+    doc_["numLowVoltageAlarms"] = stats_.numLowVoltageAlarms;
+    doc_["numHighVoltageAlarms"] = stats_.numHighVoltageAlarms;
+    doc_["amountDischargedEnergy"] = rounded_(stats_.amountDischargedEnergy, 1000);
+    doc_["amountChargedEnergy"] = rounded_(stats_.amountChargedEnergy, 1000);
+    doc_["deepestTemperatur"] = rounded_(stats_.deepestTemperatur, 100);
+    doc_["highestTemperatur"] = rounded_(stats_.highestTemperatur, 100);
+
+    String json_;
+    size_t length_ = measureJson(doc_);
+    if (doc_.overflowed() || !json_.reserve(length_) || serializeJson(doc_, json_) != length_) {
+        LOG_ERROR("Failed to serialize battery data");
+        request->send(500, "text/plain", "JSON serialization failed");
+        return;
+    }
+    request->send(200, "application/json", json_);
 }
 
 class MyHtmlRootFormatProvider : public TabHtmlRootFormatProvider {
@@ -547,15 +484,13 @@ void handleRoot(AsyncWebServerRequest* request) {
 
     response_->print(fp_.addNewLine(2));
     response_->print(fp_.getHtmlTable());
-    response_->print(fp_.getHtmlTableRowText("<a href='config'>Configuration</a>"));
-    response_->print(fp_.getHtmlTableRowText("<a href='webserial'>Sensor monitoring</a>"));
+    response_->print(fp_.getHtmlTableRowText("Go to <a href = 'config'>configure page</a> to change configuration."));
+    response_->print(fp_.getHtmlTableRowText("Go to <a href = 'events'>event log</a> to view the event history."));
     response_->print(fp_.getHtmlTableRowText(fp_.getHtmlVersion(Version)));
     response_->print(fp_.getHtmlTableEnd());
 
-    Serial.println("About to send footer...");
     response_->print(fp_.getBodyEnd());
     response_->print(fp_.getHtmlEnd());
-    Serial.println("Footer sent!");
 
     response_->addHeader("Server", "ESP Async Web Server");
     request->send(response_);
@@ -570,9 +505,9 @@ void handlePost(AsyncWebServerRequest* request) {
 		batteryConfig.applyDefaultValues();
 
 		apModeConfig.applyDefaultValues();
-		powerSavingConfig.applyDefaultValues();
-
         iotWebConf.saveConfig();
+
+        LOG_OK("Factory defaults applied");
 
         request->send(200, "text/plain", "OK");
     }
@@ -581,117 +516,121 @@ void handlePost(AsyncWebServerRequest* request) {
     }
 }
 
-void handleWebSerialCommand(uint8_t* data, size_t len) {
-
-    // Kommando in String umwandeln
-    String command_ = "";
-    for (size_t i_ = 0; i_ < len; i_++) {
-        command_ += (char)data[i_];
-    }
+void handleWebCommand(const String& command) {
+    String command_ = command;
     command_.trim();
+    command_.toLowerCase();
 
-    // Leere Kommandos ignorieren
     if (command_.length() == 0) {
         return;
     }
 
-    eventLogger.logf("WebSerial: %s", command_.c_str());
-
-    // Kommandos verarbeiten
     if (command_ == "help") {
-        WebSerial.println("=== Available Commands ===");
-        WebSerial.println("  help         - Show this help");
-        WebSerial.println("  reboot       - Reboot the device");
-        WebSerial.println("  clear        - Clear event buffer");
-        WebSerial.println("  status       - Show system status");
-        WebSerial.println("  history      - Show all buffered events");
-        WebSerial.println("  verbose      - Toggle all verbose logging (On/Off)");
-        WebSerial.println("  verbose=Ah   - Toggle Ah counter logging");
-        WebSerial.println("  verbose=SOC  - Toggle SOC logging");
-        WebSerial.println("  verbose=TTG  - Toggle TTG logging");
-        WebSerial.println("  verbose=Cons - Toggle consumption logging");
+        WEB_LOG_INFO_AT(0, "=== Available Commands ===");
+        WEB_LOG_INFO_AT(1, "help         - Show this help");
+        WEB_LOG_INFO_AT(1, "reboot       - Reboot the device (also: restart)");
+        WEB_LOG_INFO_AT(1, "clear        - Clear event buffer");
+        WEB_LOG_INFO_AT(1, "status       - Show system status");
+        WEB_LOG_INFO_AT(1, "wifi         - Show WiFi info");
+        WEB_LOG_INFO_AT(1, "sensor       - Show sensor values");
+        WEB_LOG_INFO_AT(1, "history      - Show all buffered events");
+        WEB_LOG_INFO_AT(1, "verbose      - Toggle verbose logging");
+        WEB_LOG_INFO_AT(1, "verbose=Ah   - Toggle Ah counter logging");
+        WEB_LOG_INFO_AT(1, "verbose=SOC  - Toggle SOC logging");
+        WEB_LOG_INFO_AT(1, "verbose=TTG  - Toggle TTG logging");
+        WEB_LOG_INFO_AT(1, "verbose=Cons - Toggle consumption logging");
     }
-    else if (command_ == "reboot") {
-        WebSerial.println(">>> Rebooting device...");
-        eventLogger.log("Reboot requested via WebSerial");
-        delay(100);
+    else if (command_ == "reboot" || command_ == "restart") {
+        WEB_LOG_INFO_AT(0, "Rebooting device...");
+        eventLogger.log("Reboot requested via web command");
         ShouldReboot = true;
     }
     else if (command_ == "clear") {
         eventLogger.clear();
-        WebSerial.println(">>> Event buffer cleared");
+        WEB_LOG_INFO_AT(0, "Event buffer cleared");
     }
     else if (command_ == "status") {
-        WebSerial.println("=== System Status ===");
-        WebSerial.println("Version: " + String(Version));
-        WebSerial.println("WiFi SSID: " + String(WiFi.SSID()));
-        WebSerial.println("WiFi RSSI: " + String(WiFi.RSSI()) + " dBm");
-        WebSerial.println("IP Address: " + WiFi.localIP().toString());
-
+        WEB_LOG_INFO_AT(0, "=== System Status ===");
+        WEB_LOG_INFO_AT(1, "Version: %s", Version);
+        WEB_LOG_INFO_AT(1, "WiFi SSID: %s", WiFi.SSID().c_str());
+        WEB_LOG_INFO_AT(1, "WiFi RSSI: %d dBm", WiFi.RSSI());
+        WEB_LOG_INFO_AT(1, "IP Address: %s", WiFi.localIP().toString().c_str());
         unsigned long uptime_ = millis() / 1000;
         unsigned long days_ = uptime_ / 86400;
         unsigned long hours_ = (uptime_ % 86400) / 3600;
         unsigned long minutes_ = (uptime_ % 3600) / 60;
         unsigned long seconds_ = uptime_ % 60;
 
-        WebSerial.printf("Uptime: %lud %02lu:%02lu:%02lu", days_, hours_, minutes_, seconds_);
-        WebSerial.println("Free Heap: " + String(ESP.getFreeHeap()) + " bytes");
-        WebSerial.println("Events in buffer: " + String(eventLogger.count()) + "/" + String(EVENT_BUFFER_SIZE));
-        WebSerial.println();
-        WebSerial.println("=== Debug Flags ===");
-        WebSerial.println("Debug Mode:      " + String(debugMode ? "ON" : "OFF"));
-        WebSerial.println("Ah Counter:      " + String(debugAhCounter ? "ON" : "OFF"));
-        WebSerial.println("SOC:             " + String(debugSOC ? "ON" : "OFF"));
-        WebSerial.println("TTG:             " + String(debugTTG ? "ON" : "OFF"));
-        WebSerial.println("Consumption:     " + String(debugConsumption ? "ON" : "OFF"));
+        WEB_LOG_INFO_AT(1, "Uptime: %lud %02lu:%02lu:%02lu", days_, hours_, minutes_, seconds_);
+        WEB_LOG_INFO_AT(1, "Free Heap: %u bytes", ESP.getFreeHeap());
+        WEB_LOG_INFO_AT(1, "Events in buffer: %u/%u",
+            static_cast<unsigned int>(eventLogger.count()), static_cast<unsigned int>(EVENT_BUFFER_SIZE));
+        WEB_LOG_INFO_AT(0, "=== Debug Flags ===");
+        WEB_LOG_INFO_AT(1, "Debug Mode: %s", debugMode ? "ON" : "OFF");
+        WEB_LOG_INFO_AT(1, "Ah Counter: %s", debugAhCounter ? "ON" : "OFF");
+        WEB_LOG_INFO_AT(1, "SOC: %s", debugSOC ? "ON" : "OFF");
+        WEB_LOG_INFO_AT(1, "TTG: %s", debugTTG ? "ON" : "OFF");
+        WEB_LOG_INFO_AT(1, "Consumption: %s", debugConsumption ? "ON" : "OFF");
+    }
+    else if (command_ == "wifi") {
+        WEB_LOG_INFO_AT(0, "=== WiFi Info ===");
+        WEB_LOG_INFO_AT(1, "SSID: %s", WiFi.SSID().c_str());
+        WEB_LOG_INFO_AT(1, "IP: %s", WiFi.localIP().toString().c_str());
+        WEB_LOG_INFO_AT(1, "MAC: %s", WiFi.macAddress().c_str());
+        WEB_LOG_INFO_AT(1, "RSSI: %d dBm", WiFi.RSSI());
+    }
+    else if (command_ == "sensor") {
+        WEB_LOG_INFO_AT(0, "=== Sensor Values ===");
+        WEB_LOG_INFO_AT(1, "INA226: %s", INA226Initialized ? "initialized" : "not initialized");
+        WEB_LOG_INFO_AT(1, "Voltage: %.2f V", batteryStatus.voltage());
+        WEB_LOG_INFO_AT(1, "Current: %.2f A", batteryStatus.current());
+        WEB_LOG_INFO_AT(1, "Temperature: %.2f C", batteryStatus.temperatur());
+        WEB_LOG_INFO_AT(1, "SOC: %.1f %%", batteryStatus.soc() * 100);
     }
     else if (command_ == "history") {
         auto events_ = eventLogger.getEvents();
-        WebSerial.println("=== Event History (" + String(events_.size()) + " events) ===");
+        WEB_LOG_INFO_AT(0, "=== Event History (%u events) ===", static_cast<unsigned int>(events_.size()));
         if (events_.empty()) {
-            WebSerial.println("(No events in buffer)");
+            WEB_LOG_INFO_AT(1, "No events in buffer");
         }
         else {
             for (const auto& event_ : events_) {
-                WebSerial.println(eventLogger.formatEvent(event_));
+                WEB_LOG_INFO_AT(1, "%s", eventLogger.formatEvent(event_).c_str());
             }
         }
     }
     else if (command_ == "verbose") {
         debugMode = !debugMode;
-        WebSerial.println(">>> Verbose logging is now " + String(debugMode ? "enabled" : "disabled"));
+        WEB_LOG_INFO_AT(0, "Verbose logging is now %s", debugMode ? "enabled" : "disabled");
     }
     else if (command_.startsWith("verbose=")) {
         String param_ = command_.substring(8);
-        param_.toUpperCase();
 
-        if (param_ == "AH") {
+        if (param_ == "ah") {
             debugAhCounter = !debugAhCounter;
-            WebSerial.println(">>> Ah counter logging is now " + String(debugAhCounter ? "enabled" : "disabled"));
+            WEB_LOG_INFO_AT(0, "Ah counter logging is now %s", debugAhCounter ? "enabled" : "disabled");
         }
-        else if (param_ == "SOC") {
+        else if (param_ == "soc") {
             debugSOC = !debugSOC;
-            WebSerial.println(">>> SOC logging is now " + String(debugSOC ? "enabled" : "disabled"));
+            WEB_LOG_INFO_AT(0, "SOC logging is now %s", debugSOC ? "enabled" : "disabled");
         }
-        else if (param_ == "TTG") {
+        else if (param_ == "ttg") {
             debugTTG = !debugTTG;
-            WebSerial.println(">>> TTG logging is now " + String(debugTTG ? "enabled" : "disabled"));
+            WEB_LOG_INFO_AT(0, "TTG logging is now %s", debugTTG ? "enabled" : "disabled");
         }
-        else if (param_ == "CONS") {
+        else if (param_ == "cons") {
             debugConsumption = !debugConsumption;
-            WebSerial.println(">>> Consumption logging is now " + String(debugConsumption ? "enabled" : "disabled"));
+            WEB_LOG_INFO_AT(0, "Consumption logging is now %s", debugConsumption ? "enabled" : "disabled");
         }
         else {
-            WebSerial.println(">>> Unknown verbose parameter: " + param_);
-            WebSerial.println(">>> Valid parameters: Ah, SOC, TTG, Cons");
+            WEB_LOG_INFO_AT(0, "Unknown verbose parameter: %s", param_.c_str());
+            WEB_LOG_INFO_AT(0, "Valid parameters: Ah, SOC, TTG, Cons");
         }
     }
     else {
-        WebSerial.println(">>> Unknown command: " + command_);
-        WebSerial.println(">>> Type 'help' for available commands");
+        WEB_LOG_INFO_AT(0, "Unknown command: %s", command_.c_str());
+        WEB_LOG_INFO_AT(0, "Type 'help' for available commands");
     }
-
-    WebSerial.flush();
 }
 
 void handleReboot(AsyncWebServerRequest* request) {
@@ -718,32 +657,22 @@ void handleConfigSavedPage(iotwebconf::WebRequestWrapper* webRequestWrapper) {
 
 void convertParams() {
     APModeOfflineTime = apModeConfig.getOfflineTime();
-
-    // Apply power saving settings to SleepManager
-    sleepManager.setEnabled(powerSavingConfig.isEnabled());
-    sleepManager.setTimeout(powerSavingConfig.getTimeout() * 60 * 1000); // Convert minutes to milliseconds
-
-    eventLogger.logf("Power Saving: %s, Timeout: %lu min",
-        powerSavingConfig.isEnabled() ? "Enabled" : "Disabled",
-        powerSavingConfig.getTimeout());
-
-    ArduinoOTA.setHostname(iotWebConf.getThingName());
 }
 
 void configSaved(){ 
   convertParams();
   ParamsChanged = true;
   
-
   if (!apModeConfig.isStartOnlyAtBoot()) {
-      eventLogger.log(F("start always AP mode"));
       startAPMode = true;
+      LOG_INFO("AP mode allowed on WiFi connection failure");
   }
-  eventLogger.log(F("Parameters are saved"));
+
+  LOG_OK("Parameters saved successfully");
 } 
 
 void connectWifi(const char* ssid, const char* password){
-	eventLogger.log(F("Connecting to WiFi ..."));
+	LOG_INFO("Connecting to WiFi with SSID: %s", ssid);
     WiFi.begin(ssid, password);
 }
 

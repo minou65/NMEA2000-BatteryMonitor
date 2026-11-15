@@ -1,7 +1,10 @@
 #include <Arduino.h>
 #include <esp_task_wdt.h>
 #include <RebootManager.h>
+#include <IotWebConfAsyncTab.h>
 #include <EventLogger.h>
+#include <neotimer.h>
+#include <build_version.h>
 
 #include "common.h"
 #include "StatusHandling.h"
@@ -9,8 +12,9 @@
 #include "webHandling.h"
 #include "TemperaturHandling.h"
 #include "NMEAHandling.h"
-#include "version.h"
-#include "neotimer.h"
+
+//Foward declarations
+void loop2(void* parameter);
 
 // Manufacturer's Software version code
 char Version[] = VERSION_STR;
@@ -26,36 +30,36 @@ void setup() {
         delay(1);
     }
 
-    eventLogger.log(F("========================================"));
-    eventLogger.log(F("NMEA2000 battery monitor"));
-    eventLogger.log(F("========================================"));
-    eventLogger.logf("Firmware version: %s", Version);
-    eventLogger.log(F("Sensor type: INA226 and DS1820 sensor"));
-    eventLogger.logf("INA226 Alert pin:  GPIO_%d", INA226_ALERT_PIN);
-    eventLogger.logf("INA226 SCL pin:    GPIO_%d", INA226_SCL_PIN);
-    eventLogger.logf("INA226 SDA pin:    GPIO_%d", INA226_SDA_PIN);
-    eventLogger.logf("DS1820 Sensor pin: GPIO_%d", ONE_WIRE_BUS);
-    eventLogger.log(F("========================================"));
+    LOG_INFO("========================================");
+    LOG_INFO("NMEA2000 battery monitor");
+    LOG_INFO("========================================");
+    LOG_INFO("Firmware version: %s", Version);
+    LOG_INFO("Sensor type: INA226 and DS1820 sensor");
+    LOG_DEBUG("INA226 Alert pin:  GPIO_%d", INA226_ALERT_PIN);
+    LOG_DEBUG("INA226 SCL pin:    GPIO_%d", INA226_SCL_PIN);
+    LOG_DEBUG("INA226 SDA pin:    GPIO_%d", INA226_SDA_PIN);
+    LOG_DEBUG("DS1820 Sensor pin: GPIO_%d", ONE_WIRE_BUS);
+    LOG_INFO("========================================");
 
 #ifdef DISABLE_BROWNOUT_DETECTOR
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
-    eventLogger.log(F("Brownout detector disabled via build flag"));
+    LOG_DEBUG("Brownout detector disabled via build flag");
 #endif
 
     RebootManager::begin();
-    eventLogger.logf("Reboot count: %d", RebootManager::getRebootCount());
-    eventLogger.logf("Last reboot reason: %s", RebootManager::getLastRebootReasonText().c_str());
+    LOG_DEBUG("Reboot count: %d", RebootManager::getRebootCount());
+    LOG_DEBUG("Last reboot reason: %s", RebootManager::getLastRebootReasonText().c_str());
 
-    eventLogger.log(F("Initializing WiFi..."));
     wifiSetup();
-
-    eventLogger.log(F("Initializing sensor..."));
+    LOG_OK("WiFi initialized");
+    
     sensorInit();
     TemperaturInit();
+    LOG_OK("Sensors initialized");
 
-    eventLogger.log(F("Setting up NMEA2000..."));
+    LOG_INFO("Setting up NMEA2000...");
     N2kInit();
 
     xTaskCreatePinnedToCore(
@@ -70,11 +74,11 @@ void setup() {
 
     esp_task_wdt_add(NULL);
 
-    eventLogger.log(F("========================================"));
-    eventLogger.log(F("NMEA2000 started"));
-    eventLogger.log(F("Listening for GPS time on NMEA2000 bus"));
-    eventLogger.log(F("Setup complete"));
-    eventLogger.log(F("========================================"));
+    LOG_INFO("========================================");
+    LOG_INFO("NMEA2000 started");
+    LOG_INFO("Listening for GPS time on NMEA2000 bus");
+    LOG_INFO("Setup complete");
+    LOG_INFO("========================================");
 }
 
 void loop() {
